@@ -1,0 +1,58 @@
+<div class="shell">
+  <header class="header">
+    <app-logo size="sm" />
+    <div class="flex-between header-actions">
+      <a routerLink="/admin/dashboard" class="link-back">← Yönetim Paneli</a>
+      <app-sound-toggle />
+    </div>
+  </header>
+
+  <main class="main">
+    @if (host(); as host) {
+      <div class="lobby-col">
+        <div class="pin-block">
+          <span class="pin-label">Oyun PIN'i</span>
+          <div class="pin-number">{{ host.pinCode }}</div>
+          <p class="pin-hint">Katılımcılar bu kodu girerek oyuna katılabilir.</p>
+          <p class="quiz-title-display">{{ host.quizTitle }}</p>
+        </div>
+
+        <app-alert [message]="error()" />
+
+        <div class="players-panel">
+          <div class="flex-between">
+            <h2 class="players-title">👥 Katılımcılar ({{ players().length }})</h2>
+          </div>
+
+          @if (players().length === 0) {
+            <div class="empty-state">
+              <app-spinner label="Oyuncu bekleniyor..." />
+            </div>
+          } @else {
+            <div class="guest-grid">
+              @for (player of players(); track player.playerId) {
+                <div class="guest-card">
+                  <app-avatar [emoji]="player.emoji" [color]="player.color" size="lg" />
+                  <span class="guest-name">{{ player.name }}</span>
+                  @if (player.teamName) {
+                    <span class="guest-team">{{ player.teamName }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <app-button
+          variant="red"
+          size="lg"
+          [full]="true"
+          [loading]="starting()"
+          (click)="handleStart()"
+        >
+          🚀 Oyunu Başlat
+        </app-button>
+      </div>
+    }
+  </main>
+</div>

@@ -1,0 +1,175 @@
+<div class="shell">
+  <header class="header">
+    <app-logo size="sm" />
+    <div class="flex-between header-actions">
+      <a routerLink="/admin/host/{{ host()?.sessionId }}" class="link-back">← Lobi</a>
+      <app-sound-toggle />
+    </div>
+  </header>
+
+  <main class="main control-main">
+    @if (host(); as host) {
+      <div class="flex-between control-head">
+        <div>
+          <h1 class="control-title">{{ host.quizTitle }}</h1>
+          <p class="control-sub">PIN: {{ host.pinCode }} · {{ statusLabel() }}</p>
+        </div>
+        <div class="flex gap-2">
+          <app-button
+            variant="green"
+            size="sm"
+            [loading]="busy()"
+            [disabled]="status() === 'Finished'"
+            (click)="handleAdvance()"
+          >
+            {{ status() === 'Waiting' ? '▶️ Oyunu Başlat' : '⏭️ Sonraki Soru' }}
+          </app-button>
+          <app-button
+            variant="red"
+            size="sm"
+            [loading]="busy()"
+            [disabled]="status() === 'Finished'"
+            (click)="handleFinish()"
+          >
+            🏁 Oyunu Bitir
+          </app-button>
+          <app-button variant="white" size="sm" (click)="handleScoreboard()"> 🏆 Skor </app-button>
+        </div>
+      </div>
+
+      <div class="mb-4 flex gap-2">
+        <app-button variant="ghost" size="sm" (click)="download('pdf')">📄 Rapor (PDF)</app-button>
+        <app-button variant="ghost" size="sm" (click)="download('excel')"
+          >📊 Rapor (Excel)</app-button
+        >
+      </div>
+
+      <app-alert class="mb-4" [message]="error()" />
+      <app-alert variant="success" class="mb-4" [message]="message()" />
+
+      @if (status() === 'Finished') {
+        <div class="control-col">
+          <div class="finished-banner">
+            <h2 class="finished-title">🎉 Oyun Bitti!</h2>
+            <p class="finished-text">Skorları görmek için “Skor” butonuna bas veya raporu indir.</p>
+          </div>
+          @if (scoreboard(); as scoreboard) {
+            <app-score-table [scoreboard]="scoreboard" />
+          }
+        </div>
+      } @else {
+        <div class="grid-2 control-grid">
+          <section class="glass control-panel">
+            @if (currentQuestion(); as question) {
+              <div class="flex-between control-question-head">
+                <span class="control-muted"
+                  >Soru {{ question.orderNo }}/{{ quiz()?.questions?.length ?? 0 }}</span
+                >
+                <span class="text-gold">{{ question.points }} puan</span>
+              </div>
+
+              <div class="control-question-text">{{ question.text }}</div>
+
+              <div class="control-countdown">
+                <app-countdown-bar
+                  [duration]="timeLimit()"
+                  [running]="status() === 'InGame'"
+                  [resetKey]="questionOrderNo()"
+                  (expired)="onCountdownExpired()"
+                />
+              </div>
+
+              <div class="host-options">
+                @for (
+                  option of currentQuestionOptions();
+                  track option.optionId;
+                  let index = $index
+                ) {
+                  <div
+                    class="host-option anim-fade-in-up {{ hostOptionClass(index) }}"
+                    [style.animation-delay]="index * 75 + 'ms'"
+                  >
+                    <span class="letter-badge {{ optionColor(index) }}">{{
+                      letterFor(index)
+                    }}</span>
+                    <span class="host-option-text">{{ option.text }}</span>
+                    @if (option.isCorrect) {
+                      <span class="host-option-correct">✅</span>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="control-correct">
+                <p class="control-correct-label">✅ Doğru Cevap</p>
+                <p class="control-correct-text">{{ correctOption()?.text ?? 'Bilinmiyor' }}</p>
+              </div>
+
+              @if (isLastQuestion()) {
+                <p class="text-gold">Bu son soruydu — “Oyunu Bitir” ile skorları açıkla.</p>
+              }
+            } @else {
+              <div class="control-empty">
+                @if (status() === 'Waiting') {
+                  <app-spinner label="Oyun başlamadı..." />
+                  <p class="control-muted">
+                    “Oyunu Başlat” butonuna basınca ilk soru burada görünecek.
+                  </p>
+                } @else {
+                  <p class="control-muted">Soru bilgisi yüklenemedi.</p>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="glass control-panel">
+            <h3 class="control-panel-title">📡 Canlı Cevaplar ({{ liveAnswers().length }})</h3>
+            @if (liveAnswers().length === 0) {
+              <p class="control-muted">Henüz cevap gelmedi.</p>
+            } @else {
+              <ul class="live-list">
+                @for (answer of liveAnswers(); track $index) {
+                  <li class="live-item">
+                    <span class="live-name">
+                      <span class="live-icon">{{ answer.isCorrect ? '✅' : '❌' }}</span>
+                      {{ answer.playerName }}
+                    </span>
+                    <span class="live-score">{{
+                      answer.isCorrect ? '+' + answer.scoreEarned : '0'
+                    }}</span>
+                  </li>
+                }
+              </ul>
+            }
+
+            <h3 class="control-panel-title jokers-title">
+              🪄 Kullanılan Jokerler ({{ jokers().length }})
+            </h3>
+            @if (jokers().length === 0) {
+              <p class="control-muted">Henüz joker kullanılmadı.</p>
+            } @else {
+              <div class="flex gap-2 flex-wrap">
+                @for (joker of jokers(); track $index) {
+                  <span class="joker-chip">{{ jokerLabel(joker) }}</span>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      }
+    }
+  </main>
+
+  <app-modal
+    [open]="showScoreboard()"
+    title="Skor Tablosu"
+    [wide]="true"
+    (close)="showScoreboard.set(false)"
+  >
+    @if (scoreboard(); as scoreboard) {
+      <app-score-table [scoreboard]="scoreboard" variant="light" />
+    } @else {
+      <app-spinner label="Skorlar yükleniyor..." />
+    }
+  </app-modal>
+</div>

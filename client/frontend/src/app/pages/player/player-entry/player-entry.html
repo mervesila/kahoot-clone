@@ -1,0 +1,46 @@
+<div class="page-center">
+  <div class="w-full">
+    <div class="entry-logo">
+      <app-logo />
+    </div>
+
+    <form class="glass anim-float-up entry-form" (ngSubmit)="handleJoin()">
+      <div class="text-center entry-avatar">
+        <app-avatar [emoji]="avatar().emoji" [color]="avatar().color" size="xl" />
+      </div>
+
+      <app-input
+        label="PIN Kodu"
+        inputMode="numeric"
+        [maxLength]="6"
+        placeholder="6 haneli PIN"
+        [value]="pinCode()"
+        (valueChange)="onPinChange($event)"
+      />
+
+      <app-input
+        label="Takma Adın (Nickname)"
+        [maxLength]="40"
+        placeholder="Örn: Kahraman"
+        [value]="nickname()"
+        (valueChange)="onNicknameChange($event)"
+        [error]="nicknameError()"
+      />
+
+      <app-input
+        label="Takım Adı (isteğe bağlı)"
+        [maxLength]="40"
+        placeholder="Takım modunda doldurulur"
+        [(value)]="teamName"
+      />
+
+      <app-avatar-picker [(avatar)]="avatar" />
+
+      <app-alert [message]="error()" />
+
+      <app-button type="submit" variant="red" size="lg" [full]="true" [loading]="loading()">
+        Oyuna Katıl 🚀
+      </app-button>
+    </form>
+  </div>
+</div>

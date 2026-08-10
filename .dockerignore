@@ -1,0 +1,9 @@
+.git
+**/bin
+**/obj
+client/frontend/node_modules
+client/frontend-react/node_modules
+**/dist
+**/.angular
+.DS_Store
+*.log

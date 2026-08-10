@@ -1,0 +1,78 @@
+using Domain.Entities;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using TKI.Application.Common;
+using TKI.Application.Common.Interfaces;
+using TKI.Application.Exceptions;
+using TKI.Application.Features.GameSessions.Commands;
+
+namespace TKI.Application.Features.GameSessions.Commands.MoveToNextQuestion;
+
+public class MoveToNextQuestionCommandHandler : IRequestHandler<MoveToNextQuestionCommand, GameSessionStateDto>
+{
+    private readonly IApplicationDbContext _db;
+    private readonly IGameEventNotifier _notifier;
+
+    public MoveToNextQuestionCommandHandler(IApplicationDbContext db, IGameEventNotifier notifier)
+    {
+        _db = db;
+        _notifier = notifier;
+    }
+
+    public async Task<GameSessionStateDto> Handle(
+        MoveToNextQuestionCommand request,
+        CancellationToken cancellationToken)
+    {
+        var session = await _db.GameSessions
+            .FirstOrDefaultAsync(s => s.Id == request.GameSessionId, cancellationToken)
+            ?? throw new NotFoundException(nameof(GameSession), request.GameSessionId);
+
+        if (session.Status != GameSessionStatuses.InGame)
+        {
+            throw new BusinessRuleException("Oturum başlatılmadığı için soru ilerletilemez.");
+        }
+
+        var nextOrderNo = await _db.Questions
+            .Where(q => q.QuizId == session.QuizId && q.OrderNo > session.CurrentQuestionOrderNo)
+            .OrderBy(q => q.OrderNo)
+            .Select(q => (int?)q.OrderNo)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (nextOrderNo is null)
+        {
+            throw new BusinessRuleException("Daha fazla soru yok. Oturumu bitirebilirsiniz.");
+        }
+
+        session.CurrentQuestionOrderNo = nextOrderNo.Value;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var totalQuestions = await _db.Questions.CountAsync(
+            q => q.QuizId == session.QuizId,
+            cancellationToken);
+
+        var questionInfo = await _db.Questions
+            .AsNoTracking()
+            .Where(q => q.QuizId == session.QuizId && q.OrderNo == session.CurrentQuestionOrderNo)
+            .Select(q => new { q.TimeLimitInSeconds, q.Points })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        await _notifier.QuestionStartedAsync(
+            new QuestionStartedEvent(
+                session.Id,
+                session.CurrentQuestionOrderNo,
+                totalQuestions,
+                questionInfo?.TimeLimitInSeconds ?? 30,
+                questionInfo?.Points ?? 0),
+            cancellationToken);
+
+        return new GameSessionStateDto
+        {
+            Id = session.Id,
+            Status = session.Status,
+            CurrentQuestionOrderNo = session.CurrentQuestionOrderNo,
+            StartedAt = session.StartedAt,
+            FinishedAt = session.FinishedAt
+        };
+    }
+}

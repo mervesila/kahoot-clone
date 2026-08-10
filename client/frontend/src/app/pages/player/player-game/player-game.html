@@ -1,0 +1,159 @@
+@if (session(); as s) {
+  <div class="shell">
+    <header class="header">
+      <app-logo size="sm" />
+      <div class="flex-between pg-header-right">
+        <div class="text-right">
+          <p class="player-name">{{ s.playerName }}</p>
+          <p class="player-score">Toplam: {{ myScore() }} puan</p>
+        </div>
+        <app-sound-toggle />
+      </div>
+    </header>
+
+    <main class="main pg-main">
+      @if (error()) {
+        <app-alert class="mb-4" [message]="error()" />
+      }
+
+      @if (phase() === 'connecting' || phase() === 'waiting') {
+        <div class="pg-waiting">
+          <span class="pg-emoji">⏳</span>
+          <h1 class="pg-waiting-title">Soru bekleniyor...</h1>
+          <p class="text-muted">Oyun sunucusu bir sonraki soruyu başlattığında burada görünecek.</p>
+        </div>
+      }
+
+      @if (phase() === 'question' && question(); as q) {
+        <div class="pg-question">
+          <div class="flex-between pg-meta">
+            <span>Soru {{ q.orderNo }}/{{ q.totalQuestions }}</span>
+            <span class="text-gold">{{ q.points }} puan</span>
+          </div>
+
+          <div class="glass q-card">
+            <p class="q-text">{{ q.text }}</p>
+          </div>
+
+          <app-countdown-bar
+            [duration]="duration()"
+            [running]="true"
+            [resetKey]="q.orderNo"
+            (expired)="handleTimeout()"
+          />
+
+          <div class="answer-grid">
+            @for (option of questionOptions(); track option.optionId; let i = $index) {
+              <app-answer-button
+                [index]="i"
+                [text]="option.text"
+                (answered)="handleAnswer(option.optionId)"
+              />
+            }
+          </div>
+
+          @if (q.jokersEnabled !== false) {
+            <div class="joker-row">
+              <button
+                type="button"
+                class="btn btn-blue btn-sm"
+                [disabled]="usedJokers().includes('FiftyFifty')"
+                (click)="handleJoker('FiftyFifty')"
+              >
+                🧨 50/50
+              </button>
+              <button
+                type="button"
+                class="btn btn-blue btn-sm"
+                [disabled]="usedJokers().includes('DoublePoints')"
+                (click)="handleJoker('DoublePoints')"
+              >
+                ✖️2 Çift Puan
+              </button>
+              <button
+                type="button"
+                class="btn btn-blue btn-sm"
+                [disabled]="usedJokers().includes('ExtraTime')"
+                (click)="handleJoker('ExtraTime')"
+              >
+                ⏱️ +15 sn
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      @if (phase() === 'answered') {
+        <div class="pg-answered">
+          @if (timedOut() || (!result()?.isCorrect && selectedOptionId() === null)) {
+            <div class="anim-pop-in result-card result-timeout">
+              <p class="result-title">⏰ Süre Doldu</p>
+              <p class="result-sub">Bu soru için puan yok.</p>
+            </div>
+          } @else if (result()?.isCorrect) {
+            <div class="anim-pop-in result-card result-correct">
+              <p class="result-title">✅ Doğru!</p>
+              <p class="result-points">+{{ result()!.scoreEarned }}</p>
+            </div>
+          } @else {
+            <div class="anim-pop-in result-card result-wrong">
+              <p class="result-title">❌ Yanlış!</p>
+              <p class="result-sub">Bir sonraki soruda şansını dene!</p>
+            </div>
+          }
+
+          <div class="answered-col">
+            @if (question() && selectedOptionId()) {
+              <div class="answer-grid">
+                @for (option of questionOptions(); track option.optionId; let i = $index) {
+                  <app-answer-button
+                    [index]="i"
+                    [text]="option.text"
+                    [state]="
+                      option.optionId === revealCorrectId()
+                        ? 'correct'
+                        : option.optionId === selectedOptionId()
+                          ? 'wrong'
+                          : 'muted'
+                    "
+                    [disabled]="true"
+                  />
+                }
+              </div>
+            }
+
+            @if (scoreboard()) {
+              <div class="glass score-card">
+                <p class="uppercase text-muted score-label">Sıralaman</p>
+                @if (myRank() >= 0) {
+                  <p class="rank-text">
+                    #{{ myRank() + 1 }}
+                    <span class="rank-sub">
+                      ({{ scoreboard()!.individual.length }} oyuncu arasında)
+                    </span>
+                  </p>
+                } @else {
+                  <p class="text-faint">Henüz sıralamada değilsin.</p>
+                }
+              </div>
+            }
+          </div>
+
+          <p class="anim-pulse text-faint pg-next">Sonraki soru bekleniyor...</p>
+        </div>
+      }
+
+      @if (phase() === 'finished') {
+        <div class="pg-finished">
+          <h1 class="anim-pop-in pg-finished-title">🎉 Oyun Bitti!</h1>
+          <div class="w-full">
+            @if (scoreboard(); as board) {
+              <app-score-table [scoreboard]="board" [highlightPlayerId]="s.playerId" />
+            }
+          </div>
+          <app-button variant="white" size="lg" (click)="exit()">Ana Menüye Dön</app-button>
+        </div>
+      }
+    </main>
+  </div>
+}

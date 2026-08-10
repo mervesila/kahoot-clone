@@ -1,0 +1,344 @@
+<div class="shell">
+  <header class="header">
+    <app-logo size="sm" />
+    <div class="flex-between header-actions">
+      <span class="user-name"> {{ currentUser()?.firstName }} {{ currentUser()?.lastName }} </span>
+      <app-button variant="ghost" size="sm" (click)="handleLogout()">Çıkış</app-button>
+    </div>
+  </header>
+
+  <main class="main admin-main">
+    <div class="flex-between admin-head">
+      <h1 class="admin-title">📚 Quiz Yönetimi</h1>
+      <div class="flex gap-2">
+        <app-button variant="primary" size="md" (click)="openBuilder()">+ Yeni Quiz</app-button>
+        <app-button variant="yellow" size="md" (click)="openPoolModal()">📚 Havuzdan İçe Aktar</app-button>
+      </div>
+    </div>
+
+    <label class="team-toggle">
+      <input
+        type="checkbox"
+        class="team-checkbox"
+        [checked]="teamMode()"
+        (change)="teamMode.set($any($event.target).checked)"
+      />
+      Takım Modu (yeni oyunlar için)
+    </label>
+
+    <app-alert variant="success" class="mb-4" [message]="message()" />
+    <app-alert class="mb-4" [message]="error()" />
+
+    @if (loading()) {
+      <app-spinner label="Quizler yükleniyor..." />
+    } @else if (quizzes() && quizzes()!.length === 0) {
+      <div class="glass empty-state">
+        <p class="empty-title">Henüz quiz yok</p>
+        <p class="text-muted">Yeni quiz oluştur veya soru havuzundan içe aktar.</p>
+      </div>
+    } @else {
+      <div class="grid-3">
+        @for (quiz of quizzes(); track quiz.id) {
+          <div class="glass quiz-card">
+            <div class="flex-between quiz-head">
+              <h3 class="quiz-title">{{ quiz.title }}</h3>
+              <div class="quiz-actions">
+                <span
+                  class="badge {{ quiz.isActive ? 'badge-green' : 'badge-red' }}"
+                  [title]="quiz.isActive ? 'Quiz AKTİF' : 'Quiz PASİF'"
+                >
+                  {{ quiz.isActive ? 'AKTİF' : 'PASİF' }}
+                </span>
+                <button
+                  type="button"
+                  class="icon-btn icon-settings"
+                  (click)="openSettings(quiz)"
+                  [title]="'Genel ayarlar: ' + quiz.title"
+                  [attr.aria-label]="'Genel ayarlar: ' + quiz.title"
+                >
+                  ⚙️
+                </button>
+                <button
+                  type="button"
+                  class="icon-btn icon-edit"
+                  (click)="handleEditQuiz(quiz)"
+                  [disabled]="busyEditId() === quiz.id"
+                  [title]="'Soruları düzenle: ' + quiz.title"
+                  [attr.aria-label]="'Soruları düzenle: ' + quiz.title"
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  class="icon-btn icon-del"
+                  (click)="deleteTarget.set(quiz)"
+                  [title]="'Quizi sil: ' + quiz.title"
+                  [attr.aria-label]="'Quizi sil: ' + quiz.title"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+
+            @if (quiz.description) {
+              <p class="line-clamp-2 text-muted quiz-desc">{{ quiz.description }}</p>
+            }
+            <p class="text-gold quiz-count">{{ quiz.questionCount }} soru</p>
+
+            <app-button
+              variant="red"
+              size="md"
+              [full]="true"
+              [loading]="busyQuizId() === quiz.id"
+              [disabled]="quiz.questionCount === 0 || !quiz.isActive"
+              (click)="handleStartGame(quiz)"
+            >
+              🚀 Oyunu Başlat
+            </app-button>
+          </div>
+        }
+      </div>
+    }
+  </main>
+
+  <app-quiz-builder
+    [open]="builderOpen()"
+    [mode]="builderMode()"
+    [quiz]="editQuiz()"
+    [categories]="categories()"
+    (close)="closeBuilder()"
+    (saved)="onBuilderSaved($event)"
+  />
+
+  <app-modal
+    [open]="poolOpen()"
+    title="📚 Soru Havuzundan İçe Aktar"
+    [wide]="true"
+    (close)="closePoolModal()"
+  >
+    @if (poolLoading()) {
+      <app-spinner label="Soru havuzu yükleniyor..." />
+    } @else {
+      <form class="pool-form" (ngSubmit)="importFromPool()">
+        <label class="field">
+          <span class="field-label">Havuz Kategorisi</span>
+          <select
+            class="select"
+            [value]="poolCategoryName()"
+            (change)="onPoolCategoryChange($event)"
+          >
+            @if (poolCategories().length === 0) {
+              <option value="">Kategori bulunamadı</option>
+            } @else {
+              @for (category of poolCategories(); track category.name) {
+                <option [value]="category.name">
+                  {{ category.name }} ({{ category.questions.length }} soru)
+                </option>
+              }
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Soru Sayısı</span>
+          <input
+            type="number"
+            min="1"
+            max="50"
+            class="input"
+            [value]="poolQuestionCount()"
+            (input)="poolQuestionCount.set($any($event.target).value)"
+            (blur)="normalizePoolCount()"
+          />
+        </label>
+
+        <app-input
+          label="Quiz Başlığı (isteğe bağlı)"
+          placeholder="Boş bırakılırsa kategori adı kullanılır"
+          [value]="poolTitle()"
+          (valueChange)="poolTitle.set($event)"
+        />
+        <app-input
+          label="Açıklama (isteğe bağlı)"
+          [value]="poolDescription()"
+          (valueChange)="poolDescription.set($event)"
+        />
+
+        @if (poolError()) {
+          <app-alert [message]="poolError()" />
+        }
+
+        <app-button type="submit" variant="yellow" size="lg" [full]="true" [loading]="poolBusy()">
+          İçe Aktar
+        </app-button>
+      </form>
+    }
+  </app-modal>
+
+  <app-modal
+    [open]="deleteTarget() !== null"
+    title="Quizi Sil"
+    (close)="deleting() || deleteTarget.set(null)"
+  >
+    <p class="delete-text">
+      "<span class="delete-name">{{ deleteTarget()?.title }}</span
+      >" quizini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+    </p>
+    <div class="delete-actions">
+      <app-button
+        variant="white"
+        size="md"
+        (click)="deleteTarget.set(null)"
+        [disabled]="deleting()"
+      >
+        Vazgeç
+      </app-button>
+      <app-button variant="red" size="md" [loading]="deleting()" (click)="handleDeleteQuiz()">
+        Evet, Sil
+      </app-button>
+    </div>
+  </app-modal>
+
+  <app-modal
+    [open]="settingsOpen()"
+    title="⚙️ Quiz Genel Ayarları"
+    [wide]="true"
+    (close)="closeSettings()"
+  >
+    <form class="settings-form" (ngSubmit)="saveSettings()">
+      <label class="switch-row">
+        <span class="switch-row-label">
+          <span class="field-label">Quiz Durumu</span>
+          <span class="switch-hint">Pasif quizler oyuna başlatılamaz</span>
+        </span>
+        <span class="switch-wrap">
+          <label class="switch">
+            <input
+              type="checkbox"
+              class="switch-input"
+              [checked]="settingsIsActive()"
+              (change)="settingsIsActive.set($any($event.target).checked)"
+              [attr.aria-label]="'Quiz durumu'"
+            />
+            <span class="switch-slider"></span>
+          </label>
+          <span class="switch-state {{ settingsIsActive() ? 'state-on' : 'state-off' }}">
+            {{ settingsIsActive() ? 'AKTİF' : 'PASİF' }}
+          </span>
+        </span>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Quiz Adı</span>
+        <input
+          type="text"
+          class="input"
+          [value]="settingsTitle()"
+          (input)="settingsTitle.set($any($event.target).value)"
+          maxlength="200"
+          placeholder="Quiz adı"
+        />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Quiz Açıklaması</span>
+        <textarea
+          class="textarea"
+          [value]="settingsDescription()"
+          (input)="settingsDescription.set($any($event.target).value)"
+          maxlength="1000"
+          rows="3"
+          placeholder="Quiz açıklaması (isteğe bağlı)"
+        ></textarea>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Kategori</span>
+        <select
+          class="select"
+          [value]="settingsCategoryId() ?? 0"
+          (change)="onSettingsCategoryChange($event)"
+        >
+          <option [value]="0">Kategori yok</option>
+          @for (category of categories(); track category.id) {
+            <option [value]="category.id">{{ category.name }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Seviye</span>
+        <select
+          class="select"
+          [value]="settingsLevel()"
+          (change)="settingsLevel.set($any($event.target).valueAsNumber)"
+        >
+          <option [value]="1">Seviye 1</option>
+          <option [value]="2">Seviye 2 (önce seviye 1 geçilmeli)</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Geçme Notu (%)</span>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          class="select"
+          [value]="settingsPassScore()"
+          (change)="settingsPassScore.set($any($event.target).valueAsNumber)"
+        />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Varsayılan Soru Süresi</span>
+        <div class="time-row">
+          @for (seconds of settingsTimeOptions; track seconds) {
+            <button
+              type="button"
+              class="time-btn {{ settingsDefaultTime() === seconds ? 'selected' : '' }}"
+              (click)="settingsDefaultTime.set(seconds)"
+            >
+              {{ seconds }} sn
+            </button>
+          }
+        </div>
+      </label>
+
+      <label class="switch-row">
+        <span class="switch-row-label">
+          <span class="field-label">Joker İzinleri</span>
+          <span class="switch-hint">Jokerler bu quizin oturumlarında kullanılabilir</span>
+        </span>
+        <span class="switch-wrap">
+          <label class="switch">
+            <input
+              type="checkbox"
+              class="switch-input"
+              [checked]="settingsJokersEnabled()"
+              (change)="settingsJokersEnabled.set($any($event.target).checked)"
+              [attr.aria-label]="'Joker izinleri'"
+            />
+            <span class="switch-slider"></span>
+          </label>
+          <span class="switch-state {{ settingsJokersEnabled() ? 'state-on' : 'state-off' }}">
+            {{ settingsJokersEnabled() ? 'AÇIK' : 'KAPALI' }}
+          </span>
+        </span>
+      </label>
+
+      @if (settingsError()) {
+        <app-alert [message]="settingsError()" />
+      }
+
+      <div class="settings-actions">
+        <app-button variant="white" size="md" (click)="closeSettings()" [disabled]="settingsSaving()">
+          Vazgeç
+        </app-button>
+        <app-button variant="green" size="md" [loading]="settingsSaving()" type="submit">
+          Ayarları Kaydet
+        </app-button>
+      </div>
+    </form>
+  </app-modal>
+</div>

@@ -1,0 +1,279 @@
+{
+  "categories": [
+    {
+      "name": "İş Sağlığı ve Güvenliği",
+      "questions": [
+        {
+          "text": "Yüksekte çalışma yaparken aşağıdakilerden hangisi zorunlu kişisel koruyucu donanımdır?",
+          "options": ["Gözlük", "Emniyet kemeri", "Eldiven", "Maske"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Yangın söndürme tüpü kullanılırken alevin neresine tutulmalıdır?",
+          "options": ["Alevin tabanı", "Alevin üstü", "Dumanın arkası", "Rüzgârın estiği yöne"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Baret takmanın temel amacı aşağıdakilerden hangisidir?",
+          "options": ["Gözü tozdan korumak", "Elleri kesilmelere karşı korumak", "Başı düşen cisimlere karşı korumak", "Ayakları ezilmeye karşı korumak"],
+          "correctIndex": 2
+        },
+        {
+          "text": "İş kazası meydana geldiğinde ilk yapılması gereken aşağıdakilerden hangisidir?",
+          "options": ["Olay yerini hemen terk etmek", "Çalışmaya aynı şekilde devam etmek", "Fotoğraf çekip beklemek", "Yaralıyı güvenli bölgeye alıp ilk yardım uygulamak ve yetkililere haber vermek"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Kimyasal madde sızıntısı fark edildiğinde hangisi doğrudur?",
+          "options": ["Sızıntıyı ilgili birime bildirip alanı boşaltmak", "Maddeyi koklayarak tanımlamaya çalışmak", "Üzerine su döküp temizlemek", "Görmezden gelerek işe devam etmek"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Hareketli makine parçalarının neden koruyucu siperle kapatılması gerekir?",
+          "options": ["Makinenin daha hızlı çalışmasını sağlamak", "El, kol ve giysilerin sıkışmasını önlemek", "Gürültüyü artırmak", "Enerji tüketimini yükseltmek"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Atık yönetimi hiyerarşisinde ilk tercih edilen uygulama hangisidir?",
+          "options": ["Atıkları çöpe atmak", "Atıkları yakmak", "Atık oluşumunu önlemek/azaltmak", "Atıkları toprağa gömmek"],
+          "correctIndex": 2
+        }
+      ]
+    },
+    {
+      "name": "TKİ / Kurum Kültürü",
+      "questions": [
+        {
+          "text": "TKİ'nin açılımı aşağıdakilerden hangisidir?",
+          "options": ["Türkiye Kargo İşletmeleri", "Türkiye Kömür İşletmeleri Kurumu", "Türk Kimya İşletmeleri", "Tasarruf ve Kredi İşleri"],
+          "correctIndex": 1
+        },
+        {
+          "text": "TKİ'nin temel görevi aşağıdakilerden hangisidir?",
+          "options": ["Kömür üretimi yaparak enerji hammaddesi sağlamak", "Demiryolu ağı inşa etmek", "Bankacılık hizmetleri sunmak", "Telekomünikasyon altyapısı kurmak"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Kurum içi resmî yazışmalarda hangi dil ve üslup kullanılmalıdır?",
+          "options": ["Argo ve günlük ifadeler", "Uzun ve süslü cümleler", "Ağırlıklı olarak yabancı dil", "Resmî, kısa ve anlaşılır Türkçe"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Kurum içinde etik dışı bir davranış gözlemlendiğinde ne yapılmalıdır?",
+          "options": ["Davranışı görmezden gelmek", "Sosyal medyada paylaşmak", "Aynı davranışı tekrarlamak", "Konuyu ilgili amire veya birime bildirmek"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Kurum kültürünün yerleşmesinde en etkili araçlardan biri hangisidir?",
+          "options": ["Oryantasyon ve sürekli eğitimler", "Sadece disiplin cezaları", "Sadece maddi ödüller", "Çalışanların görüşlerinin alınmaması"],
+          "correctIndex": 0
+        }
+      ]
+    },
+    {
+      "name": "Madencilik",
+      "questions": [
+        {
+          "text": "Yeraltı madeninde metan gazı birikmesi hangi riski doğurur?",
+          "options": ["Sadece işitme kaybı", "Deri tahrişi", "Patlama ve yangın riski", "Görme bozukluğu"],
+          "correctIndex": 2
+        },
+        {
+          "text": "Açık ocak madenlerinde şev (yamaç) duraylılığı neden önemlidir?",
+          "options": ["Üretim hızını artırmak", "Göçük ve heyelan riskini önlemek", "Maliyetleri düşürmek", "Makine ömrünü uzatmak"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Yeraltı galerilerinde tahkimat (destekleme) işleminin amacı nedir?",
+          "options": ["Havalandırmayı azaltmak", "Çalışan sayısını artırmak", "Enerji tüketimini düşürmek", "Kazı boşluğunun tavanını emniyete almak"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Maden ocaklarında havalandırmanın temel amacı nedir?",
+          "options": ["Zararlı gazları seyreltip temiz hava sağlamak", "Ortamı soğutmak", "Gürültüyü azaltmak", "Toz miktarını artırmak"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Kömür tozunun neden olduğu en önemli tehlike hangisidir?",
+          "options": ["İşitme kaybı", "Göz yorgunluğu", "Toz patlaması riski", "Kas ağrıları"],
+          "correctIndex": 2
+        }
+      ]
+    },
+    {
+      "name": "Bilgi Teknolojileri ve Siber Güvenlik",
+      "questions": [
+        {
+          "text": "Güçlü bir parola aşağıdakilerden hangisini içermelidir?",
+          "options": ["Sadece doğum tarihi", "Sadece ad ve soyad", "Ardışık rakamlar", "Büyük-küçük harf, rakam ve özel karakter"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Phishing (oltalama) saldırısı nedir?",
+          "options": ["Bilgisayarın hızını artırmak", "Sahte e-posta veya siteyle kullanıcı bilgilerini ele geçirmeye çalışmak", "Yazılım lisanslarını uzatmak", "Ağ bağlantısını hızlandırmak"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Kurumsal e-postalarda şüpheli bir ek dosyası açılmadan önce ne yapılmalıdır?",
+          "options": ["Gönderici adresi ve beklenen dosya doğrulanmalı", "Hemen açılıp incelenmeli", "Dosya başka birine gönderilmeli", "Dosya adı değiştirilerek açılmalı"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Verilerin düzenli yedeklenmesinin temel amacı nedir?",
+          "options": ["Disk alanını boşaltmak", "İnternet hızını artırmak", "Veri kaybına karşı koruma sağlamak", "Parolaları güçlendirmek"],
+          "correctIndex": 2
+        },
+        {
+          "text": "Kimlik avı e-postalarının tipik özelliği hangisidir?",
+          "options": ["Her zaman kurumsal imza taşır", "Dosya ekleri bulunmaz", "Gönderici her zaman tanınan bir kişidir", "Acil eylem çağrısı ve şüpheli bağlantılar içerir"],
+          "correctIndex": 3
+        }
+      ]
+    },
+    {
+      "name": "İnsan Kaynakları ve İdari İşler",
+      "questions": [
+        {
+          "text": "Yıllık izin kullanmak için öncelikle hangi işlem yapılmalıdır?",
+          "options": ["İzin talebinin amir/ilgili birimce onaylanması", "İzin hakkını arkadaşlara devretmek", "Tatil planını yönetime bildirmeden çıkmak", "Sadece e-posta ile bilgi vermek"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Oryantasyon (işe alıştırma) programının amacı nedir?",
+          "options": ["Çalışanı deneme amacıyla zorlamak", "Sadece ücret bilgisi vermek", "Çalışanı sosyal medyada tanıtmak", "Yeni çalışanı kurum, iş süreçleri ve kurallarla tanıştırmak"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Performans değerlendirmesinin temel amacı nedir?",
+          "options": ["Çalışanı toplum önünde eleştirmek", "Maaşı otomatik olarak düşürmek", "Sadece bir formaliteyi yerine getirmek", "Çalışanın güçlü yönlerini ve gelişim alanlarını belirlemek"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Aşağıdakilerden hangisi kurum içi iletişim kanalıdır?",
+          "options": ["Sosyal medya dedikoduları", "Kurumsal e-posta ve duyuru panosu", "Kişisel telefon mesajları", "Anonim sohbet grupları"],
+          "correctIndex": 1
+        },
+        {
+          "text": "İşe yeni başlayan bir personel genellikle hangi belgeleri imzalar?",
+          "options": ["Sadece tatil dilekçesi", "Sadece dilekçe örneği", "İş sözleşmesi ve gizlilik taahhüdü", "Hiçbir belge gerekmez"],
+          "correctIndex": 2
+        }
+      ]
+    },
+    {
+      "name": "Mali İşler ve Satın Alma",
+      "questions": [
+        {
+          "text": "Kamu ihale sürecinde tekliflerin değerlendirildiği ve açıldığı aşama hangisidir?",
+          "options": ["Sözleşme aşaması", "Yaklaşık maliyet hesaplama aşaması", "İlan aşaması", "Teklif açma ve değerlendirme komisyonu aşaması"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Bir faturada bulunması gereken temel unsurlardan biri hangisidir?",
+          "options": ["Sadece şirket logosu", "Vergi numarası ve toplam tutar", "Sadece ürün resmi", "Müşterinin imzası"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Bütçede ödenek olmadan harcama yapılabilir mi?",
+          "options": ["Evet, her zaman yapılabilir", "Hayır, bütçe ödeneklerine uyulması zorunludur", "Evet, sonra kapatılabilir", "Sadece yıl sonunda yapılabilir"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Satınalma kararlarında sadece en düşük fiyatı seçmek neden doğru değildir?",
+          "options": ["Fiyat, kalite ve teknik yeterlilik birlikte değerlendirilmelidir", "En düşük fiyat her zaman en iyisidir", "Yüksek fiyat her zaman kötüdür", "Tedarikçi seçimi önemli değildir"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Muhasebe kayıtlarının düzenli ve eksiksiz tutulması neden önemlidir?",
+          "options": ["Sadece dosya dolabının dolu görünmesi için", "Personel sayısını artırmak için", "Mali şeffaflık ve denetime uyum sağlamak", "Gereksiz evrak üretmek için"],
+          "correctIndex": 2
+        }
+      ]
+    },
+    {
+      "name": "Kalite ve Verimlilik",
+      "questions": [
+        {
+          "text": "PDCA döngüsü aşağıdaki hangi kavramın açılımıdır?",
+          "options": ["Planla-Çalış-Durdur-Azalt", "Planla-Uygula-Kontrol Et-Önlem Al", "Üret-Dağıt-Sat-İade", "Araştır-Geliştir-Test-Çıkar"],
+          "correctIndex": 1
+        },
+        {
+          "text": "ISO 9001 standardı hangi sistemi tanımlar?",
+          "options": ["Çevre yönetim sistemi", "İş sağlığı ve güvenliği sistemi", "Bilgi güvenliği sistemi", "Kalite yönetim sistemi"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Sürekli iyileştirme kavramının Japonca karşılığı hangisidir?",
+          "options": ["Kaizen", "Kanban", "Jidoka", "Heijunka"],
+          "correctIndex": 0
+        },
+        {
+          "text": "5S yönteminin ilk adımı (Seiri) hangisidir?",
+          "options": ["Her şeyi yerleştirmek", "Temizlik yapmak", "Gereksiz olanları ayıklamak", "Standartlaştırmak"],
+          "correctIndex": 2
+        },
+        {
+          "text": "Yalın üretimde 'israf' (muda) neyi ifade eder?",
+          "options": ["Üretilen her türlü ürün", "Makine bakımları", "Kalite kontrolleri", "Müşteriye değer katmayan faaliyetler"],
+          "correctIndex": 3
+        }
+      ]
+    },
+    {
+      "name": "Genel Kültür ve Oryantasyon",
+      "questions": [
+        {
+          "text": "Türkiye'nin başkenti aşağıdakilerden hangisidir?",
+          "options": ["İstanbul", "Ankara", "İzmir", "Bursa"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Kömür hangi tür enerji kaynağıdır?",
+          "options": ["Fosil yakıt", "Yenilenebilir enerji", "Nükleer enerji", "Hidroelektrik enerji"],
+          "correctIndex": 0
+        },
+        {
+          "text": "TKİ, hangi bakanlığa bağlı olarak faaliyet gösterir?",
+          "options": ["Millî Eğitim Bakanlığı", "Sağlık Bakanlığı", "Dışişleri Bakanlığı", "Enerji ve Tabii Kaynaklar Bakanlığı"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Oryantasyon eğitimlerinde genellikle aşağıdakilerden hangisi anlatılır?",
+          "options": ["Sadece şirket kârı", "Kurum tanıtımı, iş güvenliği ve çalışma kuralları", "Rakiplerin ürünleri", "Yabancı ülke tarihi"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Aşağıdakilerden hangisi kömürün başlıca kullanım alanlarından biridir?",
+          "options": ["Tarım sulama", "İlaç sanayisi", "Elektrik üretimi", "Tekstil boyama"],
+          "correctIndex": 2
+        }
+      ]
+    },
+    {
+      "name": "Genel Kurumsal",
+      "questions": [
+        {
+          "text": "Aşağıdakilerden hangisi kurumsal çalışma ortamında doğru bir davranıştır?",
+          "options": ["Sorumlulukları gizlemek", "İş süreçlerini ilgili kişilerle zamanında paylaşmak", "Bilgiyi yalnızca kendine saklamak", "Kuralları görmezden gelmek"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Ekip çalışmasında etkili iletişimin temel şartı nedir?",
+          "options": ["Açık, net ve saygılı bir iletişim kurmak", "Yalnızca emir vermek", "Sorunları görmezden gelmek", "Her kararı tek başına almak"],
+          "correctIndex": 0
+        },
+        {
+          "text": "İş yerinde karşılaşılan bir sorun öncelikle nasıl çözülür?",
+          "options": ["Sorun büyütülerek paylaşılır", "Çözümden kaçınılır", "Sorumluluk başkalarına yüklenir", "Konu ilgili amire ve birime bildirilir"],
+          "correctIndex": 3
+        },
+        {
+          "text": "Zaman yönetiminde öncelikler nasıl belirlenmelidir?",
+          "options": ["İlk akla gelen iş yapılmalı", "Erteleme tercih edilmeli", "Tüm işler eşit önemsiz görülmeli", "Önem ve aciliyete göre planlanmalı"],
+          "correctIndex": 3
+        }
+      ]
+    }
+  ]
+}

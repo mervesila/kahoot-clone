@@ -1,0 +1,9 @@
+<div class="countdown">
+  <div class="countdown-top">
+    <span class="countdown-label">Süre</span>
+    <span class="countdown-badge {{ warn() ? 'warn' : 'ok' }}">{{ ceilRemaining() }}</span>
+  </div>
+  <div class="countdown-track">
+    <div class="countdown-fill {{ warn() ? 'warn' : '' }}" [style.width.%]="percent()"></div>
+  </div>
+</div>

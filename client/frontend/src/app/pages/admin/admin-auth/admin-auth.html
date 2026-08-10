@@ -1,0 +1,79 @@
+<div class="page-center">
+  <div class="w-full">
+    <div class="auth-logo">
+      <app-logo />
+    </div>
+
+    <div class="auth-tabs">
+      <button
+        type="button"
+        class="auth-tab {{ mode() === 'login' ? 'active' : '' }}"
+        (click)="setMode('login')"
+      >
+        Giriş
+      </button>
+      <button
+        type="button"
+        class="auth-tab {{ mode() === 'register' ? 'active' : '' }}"
+        (click)="setMode('register')"
+      >
+        Kayıt Ol
+      </button>
+    </div>
+
+    <form class="glass anim-float-up auth-form" (ngSubmit)="handleSubmit()" autocomplete="off">
+      <app-input
+        label="Sicil Numarası"
+        placeholder="Örn: ADM100"
+        autocomplete="username"
+        [error]="registrationNumberError()"
+        [(value)]="registrationNumber"
+      />
+
+      @if (mode() === 'register') {
+        <app-input
+          label="Ad"
+          autocomplete="given-name"
+          [error]="firstNameError()"
+          [(value)]="firstName"
+        />
+        <app-input
+          label="Soyad"
+          autocomplete="family-name"
+          [error]="lastNameError()"
+          [(value)]="lastName"
+        />
+        <app-input
+          label="Departman"
+          autocomplete="organization"
+          [error]="departmentError()"
+          [(value)]="department"
+        />
+      }
+
+      <app-input
+        label="Parola"
+        type="password"
+        autocomplete="current-password"
+        [error]="passwordError()"
+        [(value)]="password"
+      />
+
+      @if (mode() === 'register') {
+        <app-input
+          label="Parola (Tekrar)"
+          type="password"
+          autocomplete="new-password"
+          [error]="passwordConfirmError()"
+          [(value)]="passwordConfirm"
+        />
+      }
+
+      <app-alert [message]="error()" />
+
+      <app-button type="submit" variant="primary" size="lg" [full]="true" [loading]="loading()">
+        {{ mode() === 'login' ? 'Giriş Yap' : 'Kayıt Ol' }}
+      </app-button>
+    </form>
+  </div>
+</div>

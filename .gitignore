@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+client/frontend/node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+bin/
+obj/
+client/frontend/dist/
+
+# .NET
+*.user
+*.suo
+.vs/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/

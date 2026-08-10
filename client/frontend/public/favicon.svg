@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#16181d"/>
+  <circle cx="32" cy="32" r="22" fill="#e21b3c"/>
+  <path d="M22 26 L32 16" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M32 16 c-1.5 -6 5 -10 9 -4 l-6 6 z" fill="#ffffff"/>
+  <text x="32" y="41" font-size="17" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="800" fill="#ffffff">TKİ</text>
+</svg>

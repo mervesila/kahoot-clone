@@ -1,0 +1,18 @@
+<button
+  type="button"
+  class="option-card idle-glow anim-fade-in-up {{ colorClass() }} {{ stateClass() }} {{
+    extraClass()
+  }}"
+  [disabled]="disabled()"
+  [style.animation-delay]="index() * 75 + 'ms'"
+  (click)="answered.emit()"
+>
+  <span class="letter-badge {{ colorClass() }}">{{ letter() }}</span>
+  <span class="option-text">{{ text() }}</span>
+  @if (state() === 'correct') {
+    <span class="option-mark">✅</span>
+  }
+  @if (state() === 'wrong') {
+    <span class="option-mark">❌</span>
+  }
+</button>

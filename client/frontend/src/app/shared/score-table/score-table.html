@@ -1,0 +1,53 @@
+<div class="score-wrap">
+  <div class="score-box">
+    <div class="score-box-head">🏆 Skor Tablosu</div>
+    <ol class="score-list">
+      @if (scoreboard().individual.length === 0) {
+        <li class="empty">Henüz puan yok — ilk cevap bekleniyor.</li>
+      } @else {
+        @for (player of scoreboard().individual; track player.playerId; let index = $index) {
+          <li class="{{ player.playerId === highlightPlayerId() ? 'highlighted' : '' }}">
+            <div class="flex-between">
+              <span class="score-rank">{{ medal(index + 1) }}</span>
+              <div>
+                <p class="score-name">{{ player.playerName }}</p>
+                @if (player.teamName) {
+                  <p class="score-sub">{{ player.teamName }}</p>
+                }
+              </div>
+            </div>
+            <div class="flex-between gap-3">
+              <span class="score-count">
+                {{ player.correctCount }}/{{ player.totalAnswers }} ✓
+              </span>
+              <span class="score-pts">{{ player.score }}</span>
+            </div>
+          </li>
+        }
+      }
+    </ol>
+  </div>
+
+  @if (scoreboard().isTeamMode && scoreboard().teams.length > 0) {
+    <div class="score-box">
+      <div class="score-box-head">👥 Takım Skoru</div>
+      <div class="teams-grid">
+        @for (team of scoreboard().teams; track team.teamName; let index = $index) {
+          <div class="team-card">
+            <div class="flex-between">
+              <span class="team-rank">#{{ index + 1 }}</span>
+              <div>
+                <p class="score-name">{{ team.teamName }}</p>
+                <p class="score-sub">{{ team.playerCount }} oyuncu · {{ team.totalScore }} puan</p>
+              </div>
+            </div>
+            <div class="text-center">
+              <p class="team-avg">{{ team.averageScore | number: '1.0-0' }}</p>
+              <p class="score-sub">ort.</p>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

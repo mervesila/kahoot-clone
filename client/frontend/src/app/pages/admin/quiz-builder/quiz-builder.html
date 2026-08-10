@@ -1,0 +1,284 @@
+<app-modal
+  [open]="open()"
+  [title]="mode() === 'edit' ? '✏️ Soruları Düzenle' : '➕ Yeni Quiz Oluştur'"
+  [wide]="true"
+  (close)="close.emit()"
+>
+  <div class="steps">
+    @for (stepNo of [1, 2, 3]; track stepNo) {
+      <span class="step-chip {{ step() >= stepNo ? 'active' : 'inactive' }}">
+        Adım {{ stepNo }}
+      </span>
+    }
+  </div>
+
+  @if (step() === 1) {
+    <div class="builder-col">
+      <app-input
+        label="Quiz Başlığı"
+        placeholder="Örn: Genel Kültür Sınavı"
+        [value]="title()"
+        [error]="titleError()"
+        (valueChange)="title.set($event)"
+      />
+      <app-input
+        label="Açıklama / Konu (isteğe bağlı)"
+        placeholder="Örn: İSG Kuralları ve Güvenlik Önlemleri"
+        [value]="description()"
+        (valueChange)="description.set($event)"
+      />
+      <label class="field">
+        <span class="field-label">Kategori</span>
+        <select
+          class="select"
+          [value]="categoryId()"
+          (change)="categoryId.set(parseNumber($event))"
+        >
+          @if (categories().length === 0) {
+            <option [value]="0">Kategori bulunamadı</option>
+          } @else {
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          }
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Seviye</span>
+        <select class="select" [value]="level()" (change)="level.set(parseNumber($event))">
+          <option [value]="1">Seviye 1</option>
+          <option [value]="2">Seviye 2 (önce seviye 1 geçilmeli)</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Geçme Notu (%)</span>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          class="select"
+          [value]="passScore()"
+          (change)="passScore.set(parseNumber($event))"
+        />
+      </label>
+      <div class="builder-nav">
+        <app-button variant="white" size="md" (click)="close.emit()">Vazgeç</app-button>
+        <app-button variant="green" size="md" [disabled]="!title().trim()" (click)="step.set(2)">
+          İleri ▶
+        </app-button>
+      </div>
+    </div>
+  }
+
+  @if (step() === 2) {
+    <div class="builder-col">
+      @if (mode() === 'edit') {
+        <div class="glass-soft edit-info">
+          <p class="edit-title">{{ quiz()?.title }}</p>
+          <p class="edit-meta">
+            {{ existingCount() }} mevcut soru · {{ newCount() }} yeni soru eklenecek
+          </p>
+          <label class="field edit-category">
+            <span class="field-label">Yeni sorular için kategori</span>
+            <select
+              class="select"
+              [value]="categoryId()"
+              (change)="categoryId.set(parseNumber($event))"
+            >
+              @if (categories().length === 0) {
+                <option [value]="0">Kategori bulunamadı</option>
+              } @else {
+                @for (category of categories(); track category.id) {
+                  <option [value]="category.id">{{ category.name }}</option>
+                }
+              }
+            </select>
+          </label>
+          <label class="field edit-category">
+            <span class="field-label">Seviye</span>
+            <select class="select" [value]="level()" (change)="level.set(parseNumber($event))">
+              <option [value]="1">Seviye 1</option>
+              <option [value]="2">Seviye 2 (önce seviye 1 geçilmeli)</option>
+            </select>
+          </label>
+          <label class="field edit-category">
+            <span class="field-label">Geçme Notu (%)</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              class="select"
+              [value]="passScore()"
+              (change)="passScore.set(parseNumber($event))"
+            />
+          </label>
+        </div>
+      }
+
+      @if (questions().length > 0) {
+        <div class="question-list">
+          <p class="question-list-title">Sorular ({{ questions().length }})</p>
+          @for (q of questions(); track q.id; let index = $index) {
+            <div class="q-item">
+              <span class="q-num">{{ index + 1 }}</span>
+              <div class="q-item-body">
+                <p class="q-item-text">{{ q.text }}</p>
+                <p class="q-item-meta">{{ q.timeLimitInSeconds }} sn · {{ correctText(q) }} ✓</p>
+              </div>
+              <div class="q-actions">
+                <button
+                  type="button"
+                  class="q-icon-btn"
+                  (click)="editQuestion(q.id)"
+                  title="Soruyu düzenle"
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  class="q-icon-btn danger"
+                  (click)="removeQuestion(q.id)"
+                  title="Soruyu sil"
+                >
+                  🗑️
+                </button>
+              </div>
+              @if (q.isExisting) {
+                <span class="badge badge-green">Mevcut</span>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <form class="question-form" (ngSubmit)="handleAddQuestion()">
+        <p class="question-form-title">
+          {{ editingId() ? '✏️ Soruyu Düzenle' : '➕ Yeni Soru' }}
+        </p>
+        <app-input
+          label="Soru Metni"
+          placeholder="Örn: Baretsiz şantiyeye girmek neden yasaktır?"
+          [(value)]="questionText"
+        />
+
+        <label class="field">
+          <span class="field-label">Soru Süresi</span>
+          <div class="time-row">
+            @for (seconds of timeOptions; track seconds) {
+              <button
+                type="button"
+                class="time-btn {{ timeLimit() === seconds ? 'selected' : '' }}"
+                (click)="timeLimit.set(seconds)"
+              >
+                {{ seconds }} sn
+              </button>
+            }
+          </div>
+        </label>
+
+        <div class="option-fields">
+          <p class="field-label">Seçenekler (doğru cevabı işaretleyin)</p>
+          @for (option of options(); track $index; let index = $index) {
+            <div class="opt-row">
+              <input
+                type="radio"
+                name="correct-option"
+                class="opt-radio"
+                [checked]="option.isCorrect"
+                (change)="setCorrect(index)"
+                [attr.aria-label]="'Doğru cevap ' + optionLetters[index]"
+              />
+              <span class="letter-badge {{ optionClassFor(index) }}">
+                {{ optionLetters[index] }}
+              </span>
+              <input
+                type="text"
+                class="opt-input"
+                [value]="option.text"
+                (input)="updateOptionText(index, $event)"
+                [placeholder]="'Seçenek ' + optionLetters[index]"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="flex-between">
+          @if (editingId()) {
+            <app-button variant="white" size="md" type="button" (click)="cancelEdit()">
+              Vazgeç
+            </app-button>
+          } @else {
+            <span></span>
+          }
+          <app-button type="submit" variant="primary" size="md">
+            {{ editingId() ? 'Güncelle' : 'Soruyu Ekle' }}
+          </app-button>
+        </div>
+      </form>
+
+      <div class="builder-nav">
+        @if (mode() === 'create') {
+          <app-button variant="white" size="md" (click)="step.set(1)">◀ Geri</app-button>
+        } @else {
+          <span></span>
+        }
+        <app-button variant="green" size="md" (click)="step.set(3)">Quizi Kaydet ▶</app-button>
+      </div>
+    </div>
+  }
+
+  @if (step() === 3) {
+    <div class="builder-col">
+      <div class="glass-soft edit-info">
+        <p class="edit-title">{{ mode() === 'edit' ? quiz()?.title : title() }}</p>
+        <p class="edit-meta">
+          {{ mode() === 'edit' ? quiz()?.description : description() || 'Açıklama yok' }} ·
+          Kategori: {{ categoryName(categoryId()) }} ·
+          Seviye {{ level() }} · Geçme: %{{ passScore() }} ·
+          @if (existingCount() > 0) {
+            {{ existingCount() }} mevcut +
+          }
+          {{ newCount() }} soru
+        </p>
+      </div>
+
+      <div class="summary-list">
+        @for (q of questions(); track q.id; let index = $index) {
+          <div class="q-item">
+            <span class="q-num">{{ index + 1 }}</span>
+            <p class="q-item-text">{{ q.text }}</p>
+            @if (q.isExisting) {
+              <span class="badge badge-green">Mevcut</span>
+            }
+          </div>
+        }
+      </div>
+
+      <app-alert [message]="error()" />
+
+      <div class="builder-nav">
+        <app-button variant="white" size="md" (click)="step.set(2)" [disabled]="saving()">
+          ◀ Geri
+        </app-button>
+        <app-button variant="red" size="md" [loading]="saving()" (click)="handleSave()">
+          💾 Quizi Kaydet
+        </app-button>
+      </div>
+    </div>
+  }
+</app-modal>
+
+@let target = deleteTarget();
+@if (target) {
+  <app-modal [open]="true" title="🗑️ Soruyu Sil" (close)="cancelDelete()">
+    <div class="confirm-box">
+      <p class="confirm-text">
+        <strong>"{{ target.text }}"</strong> sorusunu silmek istediğinize emin misiniz?
+      </p>
+      <div class="confirm-actions">
+        <app-button variant="white" size="md" (click)="cancelDelete()">Vazgeç</app-button>
+        <app-button variant="red" size="md" (click)="confirmDelete()">Evet, Sil</app-button>
+      </div>
+    </div>
+  </app-modal>
+}

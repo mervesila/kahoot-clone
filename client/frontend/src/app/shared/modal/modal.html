@@ -1,0 +1,18 @@
+@if (open()) {
+  <div class="modal-overlay" (click)="close.emit()">
+    <div
+      class="modal-panel {{ wide() ? 'wide' : '' }}"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal-header">
+        <h2 class="modal-title">{{ title() }}</h2>
+        <button type="button" class="modal-close" (click)="close.emit()" aria-label="Kapat">
+          ✕
+        </button>
+      </div>
+      <ng-content></ng-content>
+    </div>
+  </div>
+}

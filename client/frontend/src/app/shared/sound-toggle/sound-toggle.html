@@ -1,0 +1,9 @@
+<button
+  type="button"
+  class="sound-toggle {{ positionClass() }}"
+  (click)="toggle()"
+  [attr.aria-label]="muted() ? 'Sesi aç' : 'Sesi kapat'"
+  [title]="muted() ? 'Sesi aç' : 'Sesi kapat'"
+>
+  {{ muted() ? '🔇' : '🔊' }}
+</button>

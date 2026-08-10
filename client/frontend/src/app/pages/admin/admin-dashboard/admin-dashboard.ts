@@ -3,26 +3,22 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AlertComponent } from '../../../shared/alert/alert';
 import { AppButtonComponent } from '../../../shared/app-button/app-button';
-import { AppInputComponent } from '../../../shared/app-input/app-input';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { ModalComponent } from '../../../shared/modal/modal';
-import { QuizBuilderComponent } from '../quiz-builder/quiz-builder';
 import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiError, ApiService } from '../../../services/api.service';
 import { AuthService } from '../../../services/auth.service';
 import { SessionService } from '../../../services/session.service';
-import type { CategoryDto, QuestionPoolCategoryDto, QuizDetailDto, QuizDto } from '../../../models/types';
+import type { CategoryDto, QuizDto } from '../../../models/types';
 
 @Component({
   selector: 'app-admin-dashboard',
   imports: [
     AlertComponent,
     AppButtonComponent,
-    AppInputComponent,
     FormsModule,
     LogoComponent,
     ModalComponent,
-    QuizBuilderComponent,
     SpinnerComponent,
   ],
   templateUrl: './admin-dashboard.html',
@@ -40,22 +36,8 @@ export class AdminDashboardComponent {
   readonly error = signal('');
   readonly message = signal('');
 
-  readonly builderOpen = signal(false);
-  readonly builderMode = signal<'create' | 'edit'>('create');
-  readonly editQuiz = signal<QuizDetailDto | null>(null);
-  readonly busyEditId = signal<string | null>(null);
   readonly teamMode = signal(false);
   readonly busyQuizId = signal<string | null>(null);
-
-  readonly poolOpen = signal(false);
-  readonly poolLoading = signal(false);
-  readonly poolBusy = signal(false);
-  readonly poolCategories = signal<QuestionPoolCategoryDto[]>([]);
-  readonly poolCategoryName = signal('');
-  readonly poolTitle = signal('');
-  readonly poolDescription = signal('');
-  readonly poolQuestionCount = signal('5');
-  readonly poolError = signal('');
 
   readonly deleteTarget = signal<QuizDto | null>(null);
   readonly deleting = signal(false);
@@ -124,110 +106,6 @@ export class AdminDashboardComponent {
       this.error.set(err instanceof ApiError ? err.message : 'Oyun başlatılamadı.');
     } finally {
       this.busyQuizId.set(null);
-    }
-  }
-
-  async handleEditQuiz(quiz: QuizDto): Promise<void> {
-    this.error.set('');
-    this.message.set('');
-    this.busyEditId.set(quiz.id);
-    try {
-      const detail = await this.api.getQuiz(quiz.id);
-      this.editQuiz.set(detail);
-      this.builderMode.set('edit');
-      this.builderOpen.set(true);
-    } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Quiz soruları yüklenemedi.');
-    } finally {
-      this.busyEditId.set(null);
-    }
-  }
-
-  openBuilder(): void {
-    this.error.set('');
-    this.message.set('');
-    this.editQuiz.set(null);
-    this.builderMode.set('create');
-    this.builderOpen.set(true);
-  }
-
-  closeBuilder(): void {
-    this.builderOpen.set(false);
-  }
-
-  onBuilderSaved(savedMessage: string): void {
-    this.message.set(savedMessage);
-    this.builderOpen.set(false);
-    void this.loadQuizzes();
-  }
-
-  async openPoolModal(): Promise<void> {
-    this.error.set('');
-    this.message.set('');
-    this.poolError.set('');
-    this.poolOpen.set(true);
-    this.poolLoading.set(true);
-    try {
-      const pool = await this.api.getQuestionPool();
-      this.poolCategories.set(pool.categories);
-      if (!this.poolCategoryName() && pool.categories.length > 0) {
-        this.poolCategoryName.set(pool.categories[0].name);
-      }
-    } catch (err) {
-      this.poolError.set(err instanceof ApiError ? err.message : 'Soru havuzu yüklenemedi.');
-    } finally {
-      this.poolLoading.set(false);
-    }
-  }
-
-  closePoolModal(): void {
-    if (this.poolBusy()) {
-      return;
-    }
-    this.poolOpen.set(false);
-  }
-
-  onPoolCategoryChange(event: Event): void {
-    this.poolCategoryName.set((event.target as HTMLSelectElement).value);
-  }
-
-  normalizePoolCount(): void {
-    const val = parseInt(this.poolQuestionCount(), 10);
-    if (Number.isNaN(val) || val < 1) {
-      this.poolQuestionCount.set('5');
-    } else if (val > 50) {
-      this.poolQuestionCount.set('50');
-    } else {
-      this.poolQuestionCount.set(String(val));
-    }
-  }
-
-  async importFromPool(): Promise<void> {
-    this.error.set('');
-    this.message.set('');
-    this.poolError.set('');
-    if (!this.poolCategoryName()) {
-      this.poolError.set('Lütfen bir kategori seçin.');
-      return;
-    }
-    this.poolBusy.set(true);
-    try {
-      await this.api.importQuestionPool({
-        title: this.poolTitle() || `${this.poolCategoryName()} Quiz`,
-        description: this.poolDescription(),
-        categoryName: this.poolCategoryName(),
-        questionCount: parseInt(this.poolQuestionCount(), 10) || undefined,
-      });
-      this.poolOpen.set(false);
-      this.poolTitle.set('');
-      this.poolDescription.set('');
-      this.poolQuestionCount.set('5');
-      this.message.set('Quiz soru havuzundan oluşturuldu.');
-      await this.loadQuizzes();
-    } catch (err) {
-      this.poolError.set(err instanceof ApiError ? err.message : 'Quiz oluşturulamadı.');
-    } finally {
-      this.poolBusy.set(false);
     }
   }
 

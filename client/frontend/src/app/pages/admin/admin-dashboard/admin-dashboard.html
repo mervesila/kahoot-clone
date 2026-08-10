@@ -10,10 +10,6 @@
   <main class="main admin-main">
     <div class="flex-between admin-head">
       <h1 class="admin-title">📚 Quiz Yönetimi</h1>
-      <div class="flex gap-2">
-        <app-button variant="primary" size="md" (click)="openBuilder()">+ Yeni Quiz</app-button>
-        <app-button variant="yellow" size="md" (click)="openPoolModal()">📚 Havuzdan İçe Aktar</app-button>
-      </div>
     </div>
 
     <label class="team-toggle">
@@ -34,7 +30,7 @@
     } @else if (quizzes() && quizzes()!.length === 0) {
       <div class="glass empty-state">
         <p class="empty-title">Henüz quiz yok</p>
-        <p class="text-muted">Yeni quiz oluştur veya soru havuzundan içe aktar.</p>
+        <p class="text-muted">Quizler soru havuzundan otomatik oluşturulur.</p>
       </div>
     } @else {
       <div class="grid-3">
@@ -58,25 +54,17 @@
                 >
                   ⚙️
                 </button>
-                <button
-                  type="button"
-                  class="icon-btn icon-edit"
-                  (click)="handleEditQuiz(quiz)"
-                  [disabled]="busyEditId() === quiz.id"
-                  [title]="'Soruları düzenle: ' + quiz.title"
-                  [attr.aria-label]="'Soruları düzenle: ' + quiz.title"
-                >
-                  ✏️
-                </button>
-                <button
-                  type="button"
-                  class="icon-btn icon-del"
-                  (click)="deleteTarget.set(quiz)"
-                  [title]="'Quizi sil: ' + quiz.title"
-                  [attr.aria-label]="'Quizi sil: ' + quiz.title"
-                >
-                  🗑️
-                </button>
+                @if (!quiz.isDynamic) {
+                  <button
+                    type="button"
+                    class="icon-btn icon-del"
+                    (click)="deleteTarget.set(quiz)"
+                    [title]="'Quizi sil: ' + quiz.title"
+                    [attr.aria-label]="'Quizi sil: ' + quiz.title"
+                  >
+                    🗑️
+                  </button>
+                }
               </div>
             </div>
 
@@ -106,80 +94,6 @@
       </div>
     }
   </main>
-
-  <app-quiz-builder
-    [open]="builderOpen()"
-    [mode]="builderMode()"
-    [quiz]="editQuiz()"
-    [categories]="categories()"
-    (close)="closeBuilder()"
-    (saved)="onBuilderSaved($event)"
-  />
-
-  <app-modal
-    [open]="poolOpen()"
-    title="📚 Soru Havuzundan İçe Aktar"
-    [wide]="true"
-    (close)="closePoolModal()"
-  >
-    @if (poolLoading()) {
-      <app-spinner label="Soru havuzu yükleniyor..." />
-    } @else {
-      <form class="pool-form" (ngSubmit)="importFromPool()">
-        <label class="field">
-          <span class="field-label">Havuz Kategorisi</span>
-          <select
-            class="select"
-            [value]="poolCategoryName()"
-            (change)="onPoolCategoryChange($event)"
-          >
-            @if (poolCategories().length === 0) {
-              <option value="">Kategori bulunamadı</option>
-            } @else {
-              @for (category of poolCategories(); track category.name) {
-                <option [value]="category.name">
-                  {{ category.name }} ({{ category.questions.length }} soru)
-                </option>
-              }
-            }
-          </select>
-        </label>
-
-        <label class="field">
-          <span class="field-label">Soru Sayısı</span>
-          <input
-            type="number"
-            min="1"
-            max="50"
-            class="input"
-            [value]="poolQuestionCount()"
-            (input)="poolQuestionCount.set($any($event.target).value)"
-            (blur)="normalizePoolCount()"
-          />
-        </label>
-
-        <app-input
-          label="Quiz Başlığı (isteğe bağlı)"
-          placeholder="Boş bırakılırsa kategori adı kullanılır"
-          [value]="poolTitle()"
-          (valueChange)="poolTitle.set($event)"
-        />
-        <app-input
-          label="Açıklama (isteğe bağlı)"
-          [value]="poolDescription()"
-          (valueChange)="poolDescription.set($event)"
-        />
-
-        @if (poolError()) {
-          <app-alert [message]="poolError()" />
-        }
-
-        <app-button type="submit" variant="yellow" size="lg" [full]="true" [loading]="poolBusy()">
-          İçe Aktar
-        </app-button>
-      </form>
-    }
-  </app-modal>
 
   <app-modal
     [open]="deleteTarget() !== null"

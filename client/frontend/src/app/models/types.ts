@@ -72,6 +72,7 @@ export interface QuizDto {
   categoryId: number | null;
   level: number;
   passScore: number;
+  isDynamic: boolean;
   defaultTimeLimitInSeconds: number;
   jokersEnabled: boolean;
 }
@@ -108,6 +109,7 @@ export interface QuizDetailDto {
   categoryId: number | null;
   level: number;
   passScore: number;
+  isDynamic: boolean;
   defaultTimeLimitInSeconds: number;
   jokersEnabled: boolean;
   questions: QuizQuestionDto[];

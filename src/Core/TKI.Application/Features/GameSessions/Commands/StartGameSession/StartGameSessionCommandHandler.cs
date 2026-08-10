@@ -31,10 +31,10 @@ public class StartGameSessionCommandHandler : IRequestHandler<StartGameSessionCo
             throw new BusinessRuleException("Oturum zaten başlatılmış veya bitmiş durumda.");
         }
 
-        var firstQuestion = await _db.Questions
-            .Where(q => q.QuizId == session.QuizId)
-            .OrderBy(q => q.OrderNo)
-            .Select(q => (int?)q.OrderNo)
+        var firstQuestion = await _db.GameSessionQuestions
+            .Where(gsq => gsq.GameSessionId == session.Id)
+            .OrderBy(gsq => gsq.OrderNo)
+            .Select(gsq => (int?)gsq.OrderNo)
             .FirstOrDefaultAsync(cancellationToken);
 
         session.Status = GameSessionStatuses.InGame;
@@ -49,14 +49,15 @@ public class StartGameSessionCommandHandler : IRequestHandler<StartGameSessionCo
 
         if (session.CurrentQuestionOrderNo != 0)
         {
-            var totalQuestions = await _db.Questions.CountAsync(
-                q => q.QuizId == session.QuizId,
+            var totalQuestions = await _db.GameSessionQuestions.CountAsync(
+                gsq => gsq.GameSessionId == session.Id,
                 cancellationToken);
 
-            var questionInfo = await _db.Questions
+            var questionInfo = await _db.GameSessionQuestions
                 .AsNoTracking()
-                .Where(q => q.QuizId == session.QuizId && q.OrderNo == session.CurrentQuestionOrderNo)
-                .Select(q => new { q.TimeLimitInSeconds, q.Points })
+                .Where(gsq => gsq.GameSessionId == session.Id
+                    && gsq.OrderNo == session.CurrentQuestionOrderNo)
+                .Select(gsq => new { gsq.Question.TimeLimitInSeconds, gsq.Question.Points })
                 .FirstOrDefaultAsync(cancellationToken);
 
             await _notifier.QuestionStartedAsync(

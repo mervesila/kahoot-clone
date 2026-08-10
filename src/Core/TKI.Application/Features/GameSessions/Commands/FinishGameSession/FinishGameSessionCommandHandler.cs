@@ -76,10 +76,10 @@ public class FinishGameSessionCommandHandler : IRequestHandler<FinishGameSession
             })
             .ToListAsync(cancellationToken);
 
-        var maxPossibleScore = await _db.Questions
+        var maxPossibleScore = await _db.GameSessionQuestions
             .AsNoTracking()
-            .Where(q => q.QuizId == session.QuizId)
-            .SumAsync(q => (int?)q.Points, cancellationToken) ?? 0;
+            .Where(gsq => gsq.GameSessionId == session.Id)
+            .SumAsync(gsq => (int?)gsq.Question.Points, cancellationToken) ?? 0;
 
         var participants = await _db.SessionParticipants
             .AsNoTracking()
@@ -89,12 +89,24 @@ public class FinishGameSessionCommandHandler : IRequestHandler<FinishGameSession
 
         var completedAt = DateTime.UtcNow;
 
+        var existingResults = await _db.UserQuizResults
+            .Where(r => r.QuizId == session.QuizId && participants.Contains(r.UserId))
+            .ToDictionaryAsync(r => r.UserId, cancellationToken);
+
         foreach (var userId in participants)
         {
             var score = answers.FirstOrDefault(a => a.UserId == userId)?.Score ?? 0;
             var percentage = maxPossibleScore > 0
                 ? (int)Math.Round((double)score / maxPossibleScore * 100)
                 : 0;
+
+            if (existingResults.TryGetValue(userId, out var existing))
+            {
+                existing.Score = percentage;
+                existing.IsPassed = percentage >= passScore;
+                existing.CompletedAt = completedAt;
+                continue;
+            }
 
             _db.UserQuizResults.Add(new UserQuizResult
             {

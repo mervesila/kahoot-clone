@@ -37,6 +37,26 @@
           "text": "Atık yönetimi hiyerarşisinde ilk tercih edilen uygulama hangisidir?",
           "options": ["Atıkları çöpe atmak", "Atıkları yakmak", "Atık oluşumunu önlemek/azaltmak", "Atıkları toprağa gömmek"],
           "correctIndex": 2
+        },
+        {
+          "text": "İşitme sağlığını korumak için gürültülü ortamlarda hangisi kullanılmalıdır?",
+          "options": ["Kulak koruyucu", "Güneş gözlüğü", "Toz maskesi", "İş eldiveni"],
+          "correctIndex": 0
+        },
+        {
+          "text": "Kimyasal madde içeren konteynerlerin üzerinde bulunan etiketler neden önemlidir?",
+          "options": ["Süsleme amaçlıdır", "Maddenin tehlikelerini ve kullanım bilgilerini gösterir", "Fiyat bilgisi verir", "Üretim tarihi dışında bilgi içermez"],
+          "correctIndex": 1
+        },
+        {
+          "text": "Acil çıkış yollarıyla ilgili hangisi doğrudur?",
+          "options": ["Her zaman kilitli tutulmalıdır", "Yalnızca denetimlerde açılmalıdır", "Sürekli açık ve engelsiz tutulmalıdır", "Depolama alanı olarak kullanılabilir"],
+          "correctIndex": 2
+        },
+        {
+          "text": "Elektrikli ekipman kullanırken ıslak zeminde çalışmanın riski nedir?",
+          "options": ["Elektrik çarpması riski", "Gürültü artışı", "Yanma riski yok", "Makine yavaşlar"],
+          "correctIndex": 0
         }
       ]
     },

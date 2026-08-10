@@ -30,11 +30,12 @@ public class GetGameSessionReportQueryHandler : IRequestHandler<GetGameSessionRe
             .Select(q => q.Title)
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
 
-        var questions = await _db.Questions
+        var sessionQuestions = await _db.GameSessionQuestions
             .AsNoTracking()
-            .Where(q => q.QuizId == session.QuizId)
-            .OrderBy(q => q.OrderNo)
-            .Include(q => q.Options)
+            .Where(gsq => gsq.GameSessionId == session.Id)
+            .OrderBy(gsq => gsq.OrderNo)
+            .Include(gsq => gsq.Question)
+                .ThenInclude(q => q.Options)
             .ToListAsync(cancellationToken);
 
         var answers = await _db.ParticipantAnswers
@@ -43,8 +44,9 @@ public class GetGameSessionReportQueryHandler : IRequestHandler<GetGameSessionRe
             .Include(pa => pa.User)
             .ToListAsync(cancellationToken);
 
-        var reportQuestions = questions.Select(question =>
+        var reportQuestions = sessionQuestions.Select(gsq =>
         {
+            var question = gsq.Question;
             var questionAnswers = answers.Where(a => a.QuestionId == question.Id).ToList();
             var correctOptionId = question.Options.FirstOrDefault(o => o.IsCorrect)?.Id;
 
@@ -52,7 +54,7 @@ public class GetGameSessionReportQueryHandler : IRequestHandler<GetGameSessionRe
             {
                 QuestionId = question.Id,
                 Text = question.Text,
-                OrderNo = question.OrderNo,
+                OrderNo = gsq.OrderNo,
                 TotalAnswers = questionAnswers.Count,
                 CorrectCount = correctOptionId is null
                     ? 0
@@ -74,8 +76,8 @@ public class GetGameSessionReportQueryHandler : IRequestHandler<GetGameSessionRe
                 var user = g.First().User;
                 var correctCount = g.Count(a =>
                 {
-                    var q = questions.FirstOrDefault(x => x.Id == a.QuestionId);
-                    var correctId = q?.Options.FirstOrDefault(o => o.IsCorrect)?.Id;
+                    var sq = sessionQuestions.FirstOrDefault(x => x.QuestionId == a.QuestionId);
+                    var correctId = sq?.Question.Options.FirstOrDefault(o => o.IsCorrect)?.Id;
                     return correctId is not null && a.SelectedOptionId == correctId;
                 });
 

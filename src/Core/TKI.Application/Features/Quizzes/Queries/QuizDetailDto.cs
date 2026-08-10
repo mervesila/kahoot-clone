@@ -9,6 +9,7 @@ public class QuizDetailDto
     public int? CategoryId { get; set; }
     public int Level { get; set; }
     public int PassScore { get; set; }
+    public bool IsDynamic { get; set; }
     public int DefaultTimeLimitInSeconds { get; set; }
     public bool JokersEnabled { get; set; }
     public List<QuizQuestionDto> Questions { get; set; } = new();

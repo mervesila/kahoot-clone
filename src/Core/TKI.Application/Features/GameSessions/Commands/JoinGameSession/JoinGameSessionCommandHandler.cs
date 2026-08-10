@@ -39,7 +39,7 @@ public class JoinGameSessionCommandHandler : IRequestHandler<JoinGameSessionComm
         var quiz = await _db.Quizzes
             .AsNoTracking()
             .Where(q => q.Id == session.QuizId)
-            .Select(q => new { q.Level, q.CategoryId })
+            .Select(q => new { q.Level })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (quiz is null)
@@ -115,8 +115,7 @@ public class JoinGameSessionCommandHandler : IRequestHandler<JoinGameSessionComm
                 .AsNoTracking()
                 .Where(r => r.UserId == user.Id
                     && r.IsPassed
-                    && r.Quiz.Level == 1
-                    && r.Quiz.CategoryId == quiz.CategoryId)
+                    && r.Quiz.Level == 1)
                 .AnyAsync(cancellationToken);
 
             if (!passedLevelOne)

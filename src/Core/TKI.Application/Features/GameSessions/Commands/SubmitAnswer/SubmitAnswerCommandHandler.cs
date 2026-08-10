@@ -37,13 +37,13 @@ public class SubmitAnswerCommandHandler : IRequestHandler<SubmitAnswerCommand, S
             .FirstOrDefaultAsync(q => q.Id == request.QuestionId, cancellationToken)
             ?? throw new NotFoundException(nameof(Question), request.QuestionId);
 
-        var quizQuestion = await _db.Questions
+        var sessionQuestion = await _db.GameSessionQuestions
             .AsNoTracking()
             .FirstOrDefaultAsync(
-                q => q.QuizId == session.QuizId && q.Id == request.QuestionId,
+                gsq => gsq.GameSessionId == session.Id && gsq.QuestionId == request.QuestionId,
                 cancellationToken);
 
-        if (quizQuestion is null || quizQuestion.OrderNo != session.CurrentQuestionOrderNo)
+        if (sessionQuestion is null || sessionQuestion.OrderNo != session.CurrentQuestionOrderNo)
         {
             throw new BusinessRuleException("Gönderilen soru aktif soru ile eşleşmiyor.");
         }

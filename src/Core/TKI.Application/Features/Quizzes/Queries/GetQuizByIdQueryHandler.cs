@@ -31,6 +31,7 @@ public class GetQuizByIdQueryHandler : IRequestHandler<GetQuizByIdQuery, QuizDet
                 CategoryId = q.CategoryId,
                 Level = q.Level,
                 PassScore = q.PassScore,
+                IsDynamic = q.Questions.Count == 0,
                 DefaultTimeLimitInSeconds = q.DefaultTimeLimitInSeconds,
                 JokersEnabled = q.JokersEnabled,
                 Questions = q.Questions

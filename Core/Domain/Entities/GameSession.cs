@@ -13,6 +13,7 @@ public class GameSession : BaseEntity<Guid>
     public DateTime? FinishedAt { get; set; }
     
     public Quiz Quiz { get; set; } = null!;
+    public ICollection<GameSessionQuestion> SessionQuestions { get; set; } = new List<GameSessionQuestion>();
     public ICollection<ParticipantAnswer> ParticipantAnswers { get; set; } = new List<ParticipantAnswer>();
     public ICollection<JokerUsage> JokerUsages { get; set; } = new List<JokerUsage>();
     public ICollection<SessionParticipant> SessionParticipants { get; set; } = new List<SessionParticipant>();

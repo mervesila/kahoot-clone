@@ -32,10 +32,10 @@ public class MoveToNextQuestionCommandHandler : IRequestHandler<MoveToNextQuesti
             throw new BusinessRuleException("Oturum başlatılmadığı için soru ilerletilemez.");
         }
 
-        var nextOrderNo = await _db.Questions
-            .Where(q => q.QuizId == session.QuizId && q.OrderNo > session.CurrentQuestionOrderNo)
-            .OrderBy(q => q.OrderNo)
-            .Select(q => (int?)q.OrderNo)
+        var nextOrderNo = await _db.GameSessionQuestions
+            .Where(gsq => gsq.GameSessionId == session.Id && gsq.OrderNo > session.CurrentQuestionOrderNo)
+            .OrderBy(gsq => gsq.OrderNo)
+            .Select(gsq => (int?)gsq.OrderNo)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (nextOrderNo is null)
@@ -47,14 +47,15 @@ public class MoveToNextQuestionCommandHandler : IRequestHandler<MoveToNextQuesti
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        var totalQuestions = await _db.Questions.CountAsync(
-            q => q.QuizId == session.QuizId,
+        var totalQuestions = await _db.GameSessionQuestions.CountAsync(
+            gsq => gsq.GameSessionId == session.Id,
             cancellationToken);
 
-        var questionInfo = await _db.Questions
+        var questionInfo = await _db.GameSessionQuestions
             .AsNoTracking()
-            .Where(q => q.QuizId == session.QuizId && q.OrderNo == session.CurrentQuestionOrderNo)
-            .Select(q => new { q.TimeLimitInSeconds, q.Points })
+            .Where(gsq => gsq.GameSessionId == session.Id
+                && gsq.OrderNo == session.CurrentQuestionOrderNo)
+            .Select(gsq => new { gsq.Question.TimeLimitInSeconds, gsq.Question.Points })
             .FirstOrDefaultAsync(cancellationToken);
 
         await _notifier.QuestionStartedAsync(

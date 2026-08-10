@@ -19,6 +19,10 @@ public static class DbInitializer
         ("Genel Kurumsal", "Kurum genelini ilgilendiren çapraz bilgi ve beceri soruları")
     };
 
+    private const string LevelOneQuizTitle = "İSG Seviye 1";
+    private const string LevelTwoQuizTitle = "İSG Seviye 2";
+    private const int PassScore = 70;
+
     private sealed class PoolFile
     {
         public List<PoolCategory> Categories { get; set; } = new();
@@ -43,7 +47,7 @@ public static class DbInitializer
 
         await SeedCategoriesAsync(context);
         await SeedQuestionPoolAsync(context);
-        await SeedExampleQuizzesAsync(context);
+        await SeedLevelQuizzesAsync(context);
     }
 
     private static async Task SeedCategoriesAsync(AppDbContext context)
@@ -113,78 +117,36 @@ public static class DbInitializer
         await context.SaveChangesAsync();
     }
 
-    private static async Task SeedExampleQuizzesAsync(AppDbContext context)
+    private static async Task SeedLevelQuizzesAsync(AppDbContext context)
     {
-        var categories = await context.Categories
-            .AsNoTracking()
-            .ToListAsync();
-
-        foreach (var category in categories)
+        if (!await context.Quizzes.AnyAsync(q => q.Level == 1))
         {
-            var poolQuestions = await context.Questions
-                .Where(q => q.CategoryId == category.Id && q.QuizId == null)
-                .OrderBy(q => q.Text)
-                .ToListAsync();
-
-            if (poolQuestions.Count == 0)
+            context.Quizzes.Add(new Quiz
             {
-                continue;
-            }
-
-            var levelOneCount = (poolQuestions.Count + 1) / 2;
-            var levelOneQuestions = poolQuestions.Take(levelOneCount).ToList();
-            var levelTwoQuestions = poolQuestions.Skip(levelOneCount).ToList();
-
-            if (!await context.Quizzes.AnyAsync(q => q.CategoryId == category.Id && q.Level == 1))
-            {
-                await CreateQuizAsync(
-                    context,
-                    $"{category.Name} – Seviye 1",
-                    category.Id,
-                    1,
-                    levelOneQuestions);
-            }
-
-            if (levelTwoQuestions.Count > 0
-                && !await context.Quizzes.AnyAsync(q => q.CategoryId == category.Id && q.Level == 2))
-            {
-                await CreateQuizAsync(
-                    context,
-                    $"{category.Name} – Seviye 2",
-                    category.Id,
-                    2,
-                    levelTwoQuestions);
-            }
-        }
-    }
-
-    private static async Task CreateQuizAsync(
-        AppDbContext context,
-        string title,
-        int categoryId,
-        int level,
-        List<Question> questions)
-    {
-        var quiz = new Quiz
-        {
-            Title = title,
-            Description = $"Bu sınav, {title} kategorisi için seviye {level} sınavıdır.",
-            IsActive = true,
-            CategoryId = categoryId,
-            Level = level,
-            PassScore = 70,
-            DefaultTimeLimitInSeconds = 30,
-            JokersEnabled = true
-        };
-
-        var orderNo = 1;
-        foreach (var question in questions)
-        {
-            question.Quiz = quiz;
-            question.OrderNo = orderNo++;
+                Title = LevelOneQuizTitle,
+                Description = "50 soruluk İSG havuzundan her oturumda rastgele 10 soru ile dinamik olarak uygulanan seviye 1 sınavı.",
+                IsActive = true,
+                Level = 1,
+                PassScore = PassScore,
+                DefaultTimeLimitInSeconds = 30,
+                JokersEnabled = true
+            });
         }
 
-        context.Quizzes.Add(quiz);
+        if (!await context.Quizzes.AnyAsync(q => q.Level == 2))
+        {
+            context.Quizzes.Add(new Quiz
+            {
+                Title = LevelTwoQuizTitle,
+                Description = "Seviye 1'de en az %70 puan alanların katılabildiği, kalan havuzdan rastgele 10 soru ile uygulanan seviye 2 sınavı.",
+                IsActive = true,
+                Level = 2,
+                PassScore = PassScore,
+                DefaultTimeLimitInSeconds = 30,
+                JokersEnabled = true
+            });
+        }
+
         await context.SaveChangesAsync();
     }
 

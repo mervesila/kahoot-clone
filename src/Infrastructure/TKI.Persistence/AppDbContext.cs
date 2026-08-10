@@ -19,6 +19,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<JokerUsage> JokerUsages => Set<JokerUsage>();
     public DbSet<SessionParticipant> SessionParticipants => Set<SessionParticipant>();
     public DbSet<UserQuizResult> UserQuizResults => Set<UserQuizResult>();
+    public DbSet<GameSessionQuestion> GameSessionQuestions => Set<GameSessionQuestion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -133,6 +134,24 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(ur => new { ur.UserId, ur.QuizId })
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<GameSessionQuestion>(entity =>
+        {
+            entity.HasKey(gsq => new { gsq.GameSessionId, gsq.QuestionId });
+
+            entity.HasOne(gsq => gsq.GameSession)
+                .WithMany(gs => gs.SessionQuestions)
+                .HasForeignKey(gsq => gsq.GameSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(gsq => gsq.Question)
+                .WithMany()
+                .HasForeignKey(gsq => gsq.QuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(gsq => new { gsq.GameSessionId, gsq.OrderNo })
                 .IsUnique();
         });
     }

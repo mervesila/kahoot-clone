@@ -83,14 +83,20 @@
             @if (quiz.description) {
               <p class="line-clamp-2 text-muted quiz-desc">{{ quiz.description }}</p>
             }
-            <p class="text-gold quiz-count">{{ quiz.questionCount }} soru</p>
+            <p class="text-gold quiz-count">
+              @if (quiz.isDynamic) {
+                Dinamik · 50 soruluk havuzdan 10 soru
+              } @else {
+                {{ quiz.questionCount }} soru
+              }
+            </p>
 
             <app-button
               variant="red"
               size="md"
               [full]="true"
               [loading]="busyQuizId() === quiz.id"
-              [disabled]="quiz.questionCount === 0 || !quiz.isActive"
+              [disabled]="!quiz.isActive"
               (click)="handleStartGame(quiz)"
             >
               🚀 Oyunu Başlat

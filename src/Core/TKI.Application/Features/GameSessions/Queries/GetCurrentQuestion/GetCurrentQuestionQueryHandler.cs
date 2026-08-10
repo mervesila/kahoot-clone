@@ -26,8 +26,8 @@ public class GetCurrentQuestionQueryHandler : IRequestHandler<GetCurrentQuestion
             .FirstOrDefaultAsync(s => s.Id == request.GameSessionId, cancellationToken)
             ?? throw new NotFoundException(nameof(GameSession), request.GameSessionId);
 
-        var totalQuestions = await _db.Questions
-            .CountAsync(q => q.QuizId == session.QuizId, cancellationToken);
+        var totalQuestions = await _db.GameSessionQuestions
+            .CountAsync(gsq => gsq.GameSessionId == session.Id, cancellationToken);
 
         var jokersEnabled = await _db.Quizzes
             .AsNoTracking()
@@ -45,10 +45,13 @@ public class GetCurrentQuestionQueryHandler : IRequestHandler<GetCurrentQuestion
             throw new BusinessRuleException("Oyun henüz başlamadı.");
         }
 
-        var question = await _db.Questions
+        var question = await _db.GameSessionQuestions
             .AsNoTracking()
-            .Include(q => q.Options)
-            .Where(q => q.QuizId == session.QuizId && q.OrderNo == session.CurrentQuestionOrderNo)
+            .Include(gsq => gsq.Question)
+                .ThenInclude(q => q.Options)
+            .Where(gsq => gsq.GameSessionId == session.Id
+                && gsq.OrderNo == session.CurrentQuestionOrderNo)
+            .Select(gsq => gsq.Question)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (question is null)

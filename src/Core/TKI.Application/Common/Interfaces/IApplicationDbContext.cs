@@ -15,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<JokerUsage> JokerUsages { get; }
     DbSet<SessionParticipant> SessionParticipants { get; }
     DbSet<UserQuizResult> UserQuizResults { get; }
+    DbSet<GameSessionQuestion> GameSessionQuestions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

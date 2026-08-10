@@ -11,6 +11,7 @@ namespace TKI.Application.Features.GameSessions.Commands.CreateGameSession;
 public class CreateGameSessionCommandHandler : IRequestHandler<CreateGameSessionCommand, GameSessionDto>
 {
     private const int PinAttemptLimit = 20;
+    private const int QuestionsPerSession = 10;
 
     private readonly IApplicationDbContext _db;
 
@@ -45,6 +46,8 @@ public class CreateGameSessionCommandHandler : IRequestHandler<CreateGameSession
         _db.GameSessions.Add(session);
         await _db.SaveChangesAsync(cancellationToken);
 
+        await AssignQuestionsAsync(session, quiz.Level, cancellationToken);
+
         return new GameSessionDto
         {
             Id = session.Id,
@@ -52,6 +55,67 @@ public class CreateGameSessionCommandHandler : IRequestHandler<CreateGameSession
             PinCode = session.PinCode,
             Status = session.Status
         };
+    }
+
+    private async Task AssignQuestionsAsync(
+        GameSession session,
+        int quizLevel,
+        CancellationToken cancellationToken)
+    {
+        var poolQuery = _db.Questions
+            .Where(q => q.QuizId == null);
+
+        if (quizLevel == 2)
+        {
+            var excludeIds = await GetLastLevelOneQuestionIdsAsync(cancellationToken);
+            if (excludeIds.Count > 0)
+            {
+                poolQuery = poolQuery.Where(q => !excludeIds.Contains(q.Id));
+            }
+        }
+
+        var questionIds = await poolQuery
+            .Select(q => q.Id)
+            .ToListAsync(cancellationToken);
+
+        var selected = questionIds
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(QuestionsPerSession)
+            .ToList();
+
+        var orderNo = 1;
+        foreach (var questionId in selected)
+        {
+            _db.GameSessionQuestions.Add(new GameSessionQuestion
+            {
+                GameSessionId = session.Id,
+                QuestionId = questionId,
+                OrderNo = orderNo++
+            });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<List<Guid>> GetLastLevelOneQuestionIdsAsync(CancellationToken cancellationToken)
+    {
+        var lastLevelOneSession = await _db.GameSessions
+            .AsNoTracking()
+            .Where(gs => gs.Status == GameSessionStatuses.Finished && gs.Quiz.Level == 1)
+            .OrderByDescending(gs => gs.FinishedAt)
+            .Select(gs => gs.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (lastLevelOneSession == Guid.Empty)
+        {
+            return new List<Guid>();
+        }
+
+        return await _db.GameSessionQuestions
+            .AsNoTracking()
+            .Where(gsq => gsq.GameSessionId == lastLevelOneSession)
+            .Select(gsq => gsq.QuestionId)
+            .ToListAsync(cancellationToken);
     }
 
     private async Task<string> GenerateUniquePinAsync(CancellationToken cancellationToken)

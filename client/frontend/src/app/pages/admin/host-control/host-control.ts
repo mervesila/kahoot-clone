@@ -1,8 +1,8 @@
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { AlertComponent } from '../../../shared/alert/alert';
-import { AppButtonComponent } from '../../../shared/app-button/app-button';
 import { CountdownBarComponent } from '../../../shared/countdown-bar/countdown-bar';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { ModalComponent } from '../../../shared/modal/modal';
@@ -19,8 +19,8 @@ import type {
   GameFinishedEvent,
   JokerUsedEvent,
   QuestionStartedEvent,
-  QuizDetailDto,
   ScoreboardDto,
+  SessionQuestionDto,
 } from '../../../models/types';
 
 const JOKER_LABELS: Record<string, string> = {
@@ -43,9 +43,9 @@ interface LiveAnswer {
   selector: 'app-host-control',
   imports: [
     AlertComponent,
-    AppButtonComponent,
     CountdownBarComponent,
     LogoComponent,
+    MatButtonModule,
     ModalComponent,
     RouterLink,
     ScoreTableComponent,
@@ -65,7 +65,7 @@ export class HostControlComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly host = signal<HostSession | null>(null);
-  readonly quiz = signal<QuizDetailDto | null>(null);
+  readonly sessionQuestions = signal<SessionQuestionDto[]>([]);
   readonly status = signal<SessionStatus>('Waiting');
   readonly questionOrderNo = signal(0);
   readonly timeLimit = signal(30);
@@ -78,11 +78,11 @@ export class HostControlComponent {
   readonly busy = signal(false);
 
   protected readonly currentQuestion = computed(() => {
-    const quiz = this.quiz();
-    if (!quiz) {
+    const questions = this.sessionQuestions();
+    if (questions.length === 0) {
       return null;
     }
-    return quiz.questions.find((q) => q.orderNo === this.questionOrderNo()) ?? null;
+    return questions.find((q) => q.orderNo === this.questionOrderNo()) ?? null;
   });
 
   protected readonly currentQuestionOptions = computed(() => {
@@ -95,10 +95,8 @@ export class HostControlComponent {
   );
 
   protected readonly isLastQuestion = computed(() => {
-    const quiz = this.quiz();
-    return (
-      quiz !== null && this.questionOrderNo() >= quiz.questions.length && quiz.questions.length > 0
-    );
+    const questions = this.sessionQuestions();
+    return questions.length > 0 && this.questionOrderNo() >= questions.length;
   });
 
   protected readonly statusLabel = computed(() => {
@@ -116,10 +114,12 @@ export class HostControlComponent {
     this.host.set(stored);
 
     void this.api
-      .getQuiz(stored.quizId)
-      .then((quiz) => this.quiz.set(quiz))
+      .getSessionQuestions(stored.sessionId)
+      .then((questions) => this.sessionQuestions.set(questions))
       .catch((err) =>
-        this.error.set(err instanceof ApiError ? err.message : 'Quiz bilgileri alınamadı.'),
+        this.error.set(
+          err instanceof ApiError ? err.message : 'Oturum soruları yüklenemedi.',
+        ),
       );
     void this.api
       .getSessionState(stored.sessionId)
@@ -146,9 +146,9 @@ export class HostControlComponent {
 
     effect(() => {
       const st = this.status();
-      const quiz = this.quiz();
-      if (st === 'InGame' && quiz) {
-        const question = quiz.questions.find((q) => q.orderNo === this.questionOrderNo());
+      const questions = this.sessionQuestions();
+      if (st === 'InGame' && questions.length > 0) {
+        const question = questions.find((q) => q.orderNo === this.questionOrderNo());
         if (question) {
           this.timeLimit.set(question.timeLimitInSeconds);
         }

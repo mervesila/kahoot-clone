@@ -4,6 +4,7 @@ import { lastValueFrom } from 'rxjs';
 import type {
   AuthResult,
   CategoryDto,
+  CreateCategoryRequest,
   CreateQuizRequest,
   CurrentQuestionDto,
   GameSessionDto,
@@ -13,6 +14,7 @@ import type {
   QuizDto,
   ScoreboardDto,
   SessionParticipantDto,
+  SessionQuestionDto,
   SubmitAnswerResult,
   UpdateQuizRequest,
   QuestionPoolDto,
@@ -190,6 +192,10 @@ export class ApiService {
     return this.get<CategoryDto[]>('/api/admin/categories');
   }
 
+  createCategory(data: CreateCategoryRequest): Promise<{ id: number }> {
+    return this.post<{ id: number }>('/api/admin/categories', data);
+  }
+
   getQuizzes(): Promise<QuizDto[]> {
     return this.get<QuizDto[]>('/api/admin/quizzes');
   }
@@ -299,6 +305,12 @@ export class ApiService {
   }
 
   // --- Rapor ---
+  getSessionQuestions(sessionId: string): Promise<SessionQuestionDto[]> {
+    return this.get<SessionQuestionDto[]>(
+      `/api/admin/game-sessions/${sessionId}/questions`,
+    );
+  }
+
   getReport(sessionId: string): Promise<unknown> {
     return this.get<unknown>(`/api/admin/game-sessions/${sessionId}/report`);
   }

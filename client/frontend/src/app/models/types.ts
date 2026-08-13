@@ -85,6 +85,11 @@ export interface CategoryDto {
   isActive: boolean;
 }
 
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string | null;
+}
+
 export interface QuestionOptionDto {
   optionId: string;
   text: string;
@@ -99,6 +104,22 @@ export interface QuizQuestionDto {
   points: number;
   categoryId: number;
   options: QuestionOptionDto[];
+}
+
+export interface SessionQuestionOptionDto {
+  optionId: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface SessionQuestionDto {
+  questionId: string;
+  text: string;
+  categoryName: string;
+  orderNo: number;
+  timeLimitInSeconds: number;
+  points: number;
+  options: SessionQuestionOptionDto[];
 }
 
 export interface QuizDetailDto {

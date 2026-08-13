@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AvatarComponent } from '../../../shared/avatar/avatar';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { SoundToggleComponent } from '../../../shared/sound-toggle/sound-toggle';
+import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
@@ -12,7 +13,7 @@ import type { GameFinishedEvent } from '../../../models/types';
 
 @Component({
   selector: 'app-player-lobby',
-  imports: [AvatarComponent, LogoComponent, SoundToggleComponent],
+  imports: [AvatarComponent, LogoComponent, SoundToggleComponent, SpinnerComponent],
   templateUrl: './player-lobby.html',
   styleUrl: './player-lobby.scss',
 })

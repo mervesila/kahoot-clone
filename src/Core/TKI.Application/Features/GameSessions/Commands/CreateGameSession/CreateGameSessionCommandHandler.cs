@@ -33,6 +33,11 @@ public class CreateGameSessionCommandHandler : IRequestHandler<CreateGameSession
             throw new BusinessRuleException("Pasif durumdaki quizler oyuna başlatılamaz.");
         }
 
+        if (quiz.CategoryId is null or <= 0)
+        {
+            throw new BusinessRuleException("Sınav başlatmak için önce bir kategori seçilmelidir.");
+        }
+
         var pinCode = await GenerateUniquePinAsync(cancellationToken);
 
         var session = new GameSession
@@ -43,10 +48,14 @@ public class CreateGameSessionCommandHandler : IRequestHandler<CreateGameSession
             IsTeamMode = request.IsTeamMode
         };
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
         _db.GameSessions.Add(session);
         await _db.SaveChangesAsync(cancellationToken);
 
-        await AssignQuestionsAsync(session, quiz.Level, cancellationToken);
+        await AssignQuestionsAsync(session, quiz.Level, quiz.CategoryId.Value, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         return new GameSessionDto
         {
@@ -60,10 +69,11 @@ public class CreateGameSessionCommandHandler : IRequestHandler<CreateGameSession
     private async Task AssignQuestionsAsync(
         GameSession session,
         int quizLevel,
+        int categoryId,
         CancellationToken cancellationToken)
     {
         var poolQuery = _db.Questions
-            .Where(q => q.QuizId == null);
+            .Where(q => q.QuizId == null && q.CategoryId == categoryId);
 
         if (quizLevel == 2)
         {
@@ -77,6 +87,12 @@ public class CreateGameSessionCommandHandler : IRequestHandler<CreateGameSession
         var questionIds = await poolQuery
             .Select(q => q.Id)
             .ToListAsync(cancellationToken);
+
+        if (questionIds.Count == 0)
+        {
+            throw new BusinessRuleException(
+                "Seçilen kategoride soru bulunamadı. Lütfen önce kategoriye soru ekleyin.");
+        }
 
         var selected = questionIds
             .OrderBy(_ => Random.Shared.Next())

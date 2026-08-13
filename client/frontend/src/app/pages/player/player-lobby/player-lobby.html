@@ -5,27 +5,30 @@
     <div class="lobby-body">
       <app-logo />
 
-      <div class="anim-pop-in text-center">
+      <div class="glass lobby-card anim-fade-in-up">
         <div class="flex-center">
-          <app-avatar [emoji]="s.avatar.emoji" [color]="s.avatar.color" size="xl" />
+          <app-avatar
+            [emoji]="s.avatar.emoji"
+            [color]="s.avatar.color"
+            [fallbackText]="s.playerName"
+            size="xl"
+          />
         </div>
         <h1 class="lobby-name">{{ s.playerName }}</h1>
         @if (s.teamName) {
-          <p class="text-gold uppercase lobby-team">Takım: {{ s.teamName }}</p>
+          <p class="text-muted uppercase lobby-team">Takım: {{ s.teamName }}</p>
         }
       </div>
 
-      <div class="text-center">
-        <h2 class="lobby-waiting">Diğer oyuncular bekleniyor...</h2>
+      <div class="text-center lobby-waiting-block">
+        <h2 class="lobby-waiting">Sınav Başlaması Bekleniyor</h2>
         <p class="text-muted">
-          “{{ s.quizTitle }}” oyunu için {{ s.pinCode }} PIN kodunu kullandın.
+          “{{ s.quizTitle }}” sınavına {{ s.pinCode }} PIN koduyla katıldınız.
         </p>
       </div>
 
-      <div class="lobby-balloons">
-        <span class="balloon">🎈</span>
-        <span class="balloon balloon-2">🎈</span>
-        <span class="balloon balloon-3">🎈</span>
+      <div class="lobby-spinner">
+        <app-spinner label="Sınavın başlatılması bekleniyor..." />
       </div>
     </div>
   </div>

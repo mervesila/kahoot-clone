@@ -8,7 +8,7 @@ public static class DbInitializer
 {
     private static readonly (string Name, string Description)[] SeedCategories =
     {
-        ("İş Sağlığı ve Güvenliği", "İş sağlığı, güvenlik ve çevre kuralları, riskler ve koruyucu önlemler"),
+        ("İSG", "İş sağlığı ve güvenliği soru havuzu: İSG kuralları, riskler ve koruyucu önlemler"),
         ("TKİ / Kurum Kültürü", "TKİ kurum değerleri, tarihçesi, mevzuat ve kurum içi bilgi kültürü"),
         ("Madencilik", "Maden üretim süreçleri, teknik operasyonlar ve işletme bilgisi"),
         ("Bilgi Teknolojileri ve Siber Güvenlik", "Bilişim sistemleri, veri güvenliği ve siber güvenlik farkındalığı"),
@@ -22,6 +22,9 @@ public static class DbInitializer
     private const string LevelOneQuizTitle = "İSG Seviye 1";
     private const string LevelTwoQuizTitle = "İSG Seviye 2";
     private const int PassScore = 70;
+
+    private const string SeedAdminRegistrationNumber = "admin1";
+    private const string SeedAdminPasswordHash = "100000.Tb8rm0K65N//w5OP8YoASQ==.PIJMqcbmPpHAuv557GiUmrYgYV98s5HYOQMUU0HpEcg=";
 
     private sealed class PoolFile
     {
@@ -46,8 +49,32 @@ public static class DbInitializer
         await context.Database.MigrateAsync();
 
         await SeedCategoriesAsync(context);
+        await SeedAdminAsync(context);
         await SeedQuestionPoolAsync(context);
         await SeedLevelQuizzesAsync(context);
+    }
+
+    private static async Task SeedAdminAsync(AppDbContext context)
+    {
+        var exists = await context.Users.AnyAsync(
+            u => u.RegistrationNumber == SeedAdminRegistrationNumber);
+
+        if (exists)
+        {
+            return;
+        }
+
+        context.Users.Add(new User
+        {
+            RegistrationNumber = SeedAdminRegistrationNumber,
+            FirstName = "Merve Sıla",
+            LastName = "Akyol",
+            Department = "Yönetim",
+            Role = "Admin",
+            PasswordHash = SeedAdminPasswordHash
+        });
+
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedCategoriesAsync(AppDbContext context)
@@ -85,18 +112,19 @@ public static class DbInitializer
         var categories = await context.Categories
             .ToDictionaryAsync(c => c.Name);
 
+        var isgCategory = categories.GetValueOrDefault("İSG");
+        if (isgCategory is null)
+        {
+            return;
+        }
+
         foreach (var poolCategory in poolFile.Categories)
         {
-            if (!categories.TryGetValue(poolCategory.Name, out var category))
-            {
-                continue;
-            }
-
             foreach (var item in poolCategory.Questions)
             {
                 context.Questions.Add(new Question
                 {
-                    CategoryId = category.Id,
+                    CategoryId = isgCategory.Id,
                     QuizId = null,
                     OrderNo = 0,
                     Text = item.Text,
@@ -119,6 +147,11 @@ public static class DbInitializer
 
     private static async Task SeedLevelQuizzesAsync(AppDbContext context)
     {
+        var isgCategoryId = await context.Categories
+            .Where(c => c.Name == "İSG")
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+
         if (!await context.Quizzes.AnyAsync(q => q.Level == 1))
         {
             context.Quizzes.Add(new Quiz
@@ -126,6 +159,7 @@ public static class DbInitializer
                 Title = LevelOneQuizTitle,
                 Description = "50 soruluk İSG havuzundan her oturumda rastgele 10 soru ile dinamik olarak uygulanan seviye 1 sınavı.",
                 IsActive = true,
+                CategoryId = isgCategoryId,
                 Level = 1,
                 PassScore = PassScore,
                 DefaultTimeLimitInSeconds = 30,
@@ -140,6 +174,7 @@ public static class DbInitializer
                 Title = LevelTwoQuizTitle,
                 Description = "Seviye 1'de en az %70 puan alanların katılabildiği, kalan havuzdan rastgele 10 soru ile uygulanan seviye 2 sınavı.",
                 IsActive = true,
+                CategoryId = isgCategoryId,
                 Level = 2,
                 PassScore = PassScore,
                 DefaultTimeLimitInSeconds = 30,

@@ -1,0 +1,57 @@
+.dlg-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.dlg-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.dlg-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  .dlg-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.dlg-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.dlg-field-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dlg-time-group {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dlg-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+}
+
+.dlg-error {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--red);
+}

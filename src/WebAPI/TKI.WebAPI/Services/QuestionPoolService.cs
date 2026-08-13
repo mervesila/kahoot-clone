@@ -43,25 +43,33 @@ public class QuestionPoolService
 
     private QuestionPoolDto LoadPool(string contentRoot)
     {
-        var path = Path.Combine(contentRoot, "Data", "question-pool.json");
-        try
+        var candidates = new[]
         {
-            if (File.Exists(path))
+            Path.Combine(contentRoot, "Data", "question-pool.json"),
+            Path.Combine(AppContext.BaseDirectory, "Data", "question-pool.json")
+        };
+
+        foreach (var path in candidates)
+        {
+            try
             {
-                var json = File.ReadAllText(path);
-                var pool = JsonSerializer.Deserialize<QuestionPoolDto>(json, JsonOptions);
-                if (pool is not null)
+                if (File.Exists(path))
                 {
-                    return pool;
+                    var json = File.ReadAllText(path);
+                    var pool = JsonSerializer.Deserialize<QuestionPoolDto>(json, JsonOptions);
+                    if (pool is not null)
+                    {
+                        return pool;
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Soru havuzu dosyası okunamadı: {Path}", path);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Soru havuzu dosyası okunamadı: {Path}", path);
+            }
         }
 
-        _logger.LogWarning("Soru havuzu bulunamadı, boş havuz kullanılacak: {Path}", path);
+        _logger.LogWarning("Soru havuzu bulunamadı, boş havuz kullanılacak: {Path}", candidates[0]);
         return new QuestionPoolDto();
     }
 }

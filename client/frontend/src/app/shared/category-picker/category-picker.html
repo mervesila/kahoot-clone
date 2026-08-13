@@ -1,0 +1,54 @@
+<div class="picker">
+  <mat-form-field appearance="outline" class="w-full">
+    <mat-label>{{ label }}</mat-label>
+    <mat-select [value]="selectedId" (selectionChange)="onSelectionChange($event.value)">
+      @for (category of categories; track category.id) {
+        <mat-option [value]="category.id">
+          {{ category.name }}
+          <span class="picker-count">({{ category.questionCount }} soru)</span>
+        </mat-option>
+      }
+    </mat-select>
+    @if (required && selectedId === null) {
+      <mat-error>Kategori seçimi zorunludur.</mat-error>
+    }
+  </mat-form-field>
+
+  <button
+    type="button"
+    class="picker-add-btn"
+    [disabled]="adding()"
+    (click)="toggleAddMode()"
+  >
+    {{ addMode() ? 'Yeni kategori eklemeyi iptal et' : '＋ Yeni Kategori Ekle' }}
+  </button>
+
+  @if (addMode()) {
+    <div class="picker-new-row">
+      <mat-form-field appearance="outline" class="w-full picker-new-input">
+        <mat-label>Yeni kategori adı</mat-label>
+        <input
+          matInput
+          maxlength="100"
+          [value]="newName()"
+          (input)="newName.set($any($event.target).value)"
+          (keydown.enter)="addCategory()"
+        />
+      </mat-form-field>
+      <button
+        type="button"
+        mat-flat-button
+        color="primary"
+        class="picker-new-btn"
+        [disabled]="adding()"
+        (click)="addCategory()"
+      >
+        {{ adding() ? 'Ekleniyor…' : 'Ekle' }}
+      </button>
+    </div>
+  }
+
+  @if (error()) {
+    <p class="picker-error">{{ error() }}</p>
+  }
+</div>

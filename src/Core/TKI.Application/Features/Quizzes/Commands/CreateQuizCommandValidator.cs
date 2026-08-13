@@ -23,6 +23,10 @@ public class CreateQuizCommandValidator : AbstractValidator<CreateQuizCommand>
         RuleFor(x => x.Description)
             .MaximumLength(1000).WithMessage("Quiz açıklaması en fazla 1000 karakter olabilir.");
 
+        RuleFor(x => x.CategoryId)
+            .NotNull().WithMessage("Sınav için bir kategori seçilmelidir.")
+            .GreaterThan(0).WithMessage("Sınav için bir kategori seçilmelidir.");
+
         RuleFor(x => x.Level)
             .Must(level => level is 1 or 2).WithMessage("Seviye yalnızca 1 veya 2 olabilir.");
 

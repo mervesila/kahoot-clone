@@ -9,6 +9,7 @@ import type {
   QuizDto,
   ScoreboardDto,
   SessionParticipantDto,
+  SessionQuestionDto,
   SubmitAnswerResult,
 } from './types'
 
@@ -239,6 +240,8 @@ export const api = {
     }),
 
   // --- Rapor ---
+  getSessionQuestions: (sessionId: string) =>
+    request<SessionQuestionDto[]>(`/api/admin/game-sessions/${sessionId}/questions`),
   getReport: (sessionId: string) =>
     request<unknown>(`/api/admin/game-sessions/${sessionId}/report`),
   downloadReport: async (sessionId: string, format: 'pdf' | 'excel') => {

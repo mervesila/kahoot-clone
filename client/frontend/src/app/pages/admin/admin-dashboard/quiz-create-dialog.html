@@ -1,0 +1,101 @@
+<h2 mat-dialog-title>Yeni Sınav Oluştur</h2>
+
+<mat-dialog-content class="dlg-content">
+  <div class="dlg-field">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Sınav Adı</mat-label>
+      <input
+        matInput
+        [value]="title()"
+        (input)="title.set($any($event.target).value)"
+        maxlength="200"
+        placeholder="Örn: İSG Seviye 1"
+      />
+    </mat-form-field>
+  </div>
+
+  <div class="dlg-field">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Açıklama</mat-label>
+      <textarea
+        matInput
+        rows="3"
+        [value]="description()"
+        (input)="description.set($any($event.target).value)"
+        maxlength="1000"
+      ></textarea>
+    </mat-form-field>
+  </div>
+
+  <div class="dlg-field">
+    <app-category-picker
+      [categories]="categories()"
+      [selectedId]="categoryId()"
+      label="Kategori (zorunlu)"
+      (selectedIdChange)="onCategoryChange($event)"
+      (categoriesChange)="onCategoriesChange($event)"
+    />
+    <p class="dlg-hint">
+      Sınav başlatıldığında seçilen kategorinin soru havuzundan rastgele 10 soru çekilir.
+    </p>
+  </div>
+
+  <div class="dlg-grid">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Seviye</mat-label>
+      <mat-select [value]="level()" (selectionChange)="level.set($event.value)">
+        <mat-option [value]="1">Seviye 1</mat-option>
+        <mat-option [value]="2">Seviye 2</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Geçme Notu (%)</mat-label>
+      <input
+        matInput
+        type="number"
+        min="0"
+        max="100"
+        [value]="passScore()"
+        (change)="passScore.set($any($event.target).valueAsNumber)"
+      />
+    </mat-form-field>
+  </div>
+
+  <p class="dlg-hint">
+    Seviye 2 sınavları, Seviye 1'i geçmeyen katılımcılar için kilitlidir.
+  </p>
+
+  <div class="dlg-field">
+    <span class="dlg-field-label">Soru Süresi</span>
+    <mat-button-toggle-group
+      class="dlg-time-group"
+      [value]="defaultTime()"
+      (change)="defaultTime.set($event.value)"
+    >
+      @for (seconds of timeOptions; track seconds) {
+        <mat-button-toggle [value]="seconds">{{ seconds }} sn</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+  </div>
+
+  <div class="dlg-switches">
+    <mat-slide-toggle [checked]="isActive()" (change)="isActive.set($event.checked)">
+      Sınav Aktif
+    </mat-slide-toggle>
+    <mat-slide-toggle [checked]="jokersEnabled()" (change)="jokersEnabled.set($event.checked)">
+      Jokerlere İzin Ver
+    </mat-slide-toggle>
+  </div>
+
+  @if (error()) {
+    <div class="dlg-error">{{ error() }}</div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()" [disabled]="saving()">Vazgeç</button>
+  <button mat-flat-button color="primary" (click)="save()" [disabled]="saving()">
+    {{ saving() ? 'Oluşturuluyor…' : 'Sınavı Oluştur' }}
+  </button>
+</mat-dialog-actions>

@@ -1,17 +1,32 @@
 .entry-logo {
   display: flex;
   justify-content: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .entry-form {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 0.5rem;
   padding: 1.5rem;
+  max-width: 26rem;
+  margin: 0 auto;
 }
 
-.entry-avatar {
-  display: flex;
-  justify-content: center;
+.entry-submit {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.entry-back {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.entry-back:hover {
+  color: var(--text);
 }

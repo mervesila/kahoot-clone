@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="Data\question-pool.json" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\..\..\src\Infrastructure\TKI.Persistence\TKI.Persistence.csproj" />
   </ItemGroup>
 
 </Project>

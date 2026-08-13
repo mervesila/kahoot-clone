@@ -1,19 +1,36 @@
+.home-bg {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+}
+
 .home-col {
   width: 100%;
-  max-width: 38rem;
+  max-width: 40rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2rem;
 }
 
+.home-header {
+  text-align: center;
+}
+
+.home-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .home-intro {
   max-width: 34rem;
+  margin: 0.75rem auto 0;
   text-align: center;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 500;
   color: var(--text-muted);
-  margin: 0;
 }
 
 .home-cards {
@@ -25,23 +42,40 @@
   flex-direction: column;
   gap: 0.9rem;
   padding: 1.5rem;
+  align-items: flex-start;
 }
 
-.home-emoji {
-  font-size: 2.5rem;
-  line-height: 1;
-}
-
-.home-title {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 800;
+.home-card-title {
   margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .home-desc {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
   margin: 0;
   flex: 1;
+}
+
+.home-btn {
+  width: 100%;
+}
+
+.home-btn-navy {
+  background: var(--bg-2);
+  color: #fff;
+}
+
+.home-btn-navy:hover {
+  background: #0f172a;
+}
+
+.home-foot {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  text-align: center;
 }

@@ -1,6 +1,6 @@
 <button
   type="button"
-  class="option-card idle-glow anim-fade-in-up {{ colorClass() }} {{ stateClass() }} {{
+  class="option-card anim-fade-in-up {{ colorClass() }} {{ stateClass() }} {{
     extraClass()
   }}"
   [disabled]="disabled()"
@@ -10,9 +10,9 @@
   <span class="letter-badge {{ colorClass() }}">{{ letter() }}</span>
   <span class="option-text">{{ text() }}</span>
   @if (state() === 'correct') {
-    <span class="option-mark">✅</span>
+    <span class="option-mark">Doğru</span>
   }
   @if (state() === 'wrong') {
-    <span class="option-mark">❌</span>
+    <span class="option-mark">Yanlış</span>
   }
 </button>

@@ -2,7 +2,7 @@
   <header class="header">
     <app-logo size="sm" />
     <div class="flex-between header-actions">
-      <a routerLink="/admin/host/{{ host()?.sessionId }}" class="link-back">← Lobi</a>
+      <a routerLink="/admin/host/{{ host()?.sessionId }}" class="link-back">Lobiye Dön</a>
       <app-sound-toggle />
     </div>
   </header>
@@ -14,34 +14,30 @@
           <h1 class="control-title">{{ host.quizTitle }}</h1>
           <p class="control-sub">PIN: {{ host.pinCode }} · {{ statusLabel() }}</p>
         </div>
-        <div class="flex gap-2">
-          <app-button
-            variant="green"
-            size="sm"
-            [loading]="busy()"
-            [disabled]="status() === 'Finished'"
+        <div class="flex gap-2 control-actions">
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="busy() || status() === 'Finished'"
             (click)="handleAdvance()"
           >
-            {{ status() === 'Waiting' ? '▶️ Oyunu Başlat' : '⏭️ Sonraki Soru' }}
-          </app-button>
-          <app-button
-            variant="red"
-            size="sm"
-            [loading]="busy()"
-            [disabled]="status() === 'Finished'"
+            {{ status() === 'Waiting' ? 'Sınavı Başlat' : 'Sonraki Soru' }}
+          </button>
+          <button
+            mat-stroked-button
+            class="danger-btn"
+            [disabled]="busy() || status() === 'Finished'"
             (click)="handleFinish()"
           >
-            🏁 Oyunu Bitir
-          </app-button>
-          <app-button variant="white" size="sm" (click)="handleScoreboard()"> 🏆 Skor </app-button>
+            Sınavı Bitir
+          </button>
+          <button mat-stroked-button (click)="handleScoreboard()">Skor</button>
         </div>
       </div>
 
       <div class="mb-4 flex gap-2">
-        <app-button variant="ghost" size="sm" (click)="download('pdf')">📄 Rapor (PDF)</app-button>
-        <app-button variant="ghost" size="sm" (click)="download('excel')"
-          >📊 Rapor (Excel)</app-button
-        >
+        <button mat-button class="report-btn" (click)="download('pdf')">Rapor (PDF)</button>
+        <button mat-button class="report-btn" (click)="download('excel')">Rapor (Excel)</button>
       </div>
 
       <app-alert class="mb-4" [message]="error()" />
@@ -49,9 +45,11 @@
 
       @if (status() === 'Finished') {
         <div class="control-col">
-          <div class="finished-banner">
-            <h2 class="finished-title">🎉 Oyun Bitti!</h2>
-            <p class="finished-text">Skorları görmek için “Skor” butonuna bas veya raporu indir.</p>
+          <div class="glass finished-banner">
+            <h2 class="finished-title">Sınav Tamamlandı</h2>
+            <p class="finished-text">
+              Skorları görmek için “Skor” butonunu kullanın veya raporu indirin.
+            </p>
           </div>
           @if (scoreboard(); as scoreboard) {
             <app-score-table [scoreboard]="scoreboard" />
@@ -63,9 +61,15 @@
             @if (currentQuestion(); as question) {
               <div class="flex-between control-question-head">
                 <span class="control-muted"
-                  >Soru {{ question.orderNo }}/{{ quiz()?.questions?.length ?? 0 }}</span
+                  >Soru {{ question.orderNo + 1 }}/{{ sessionQuestions().length }}</span
                 >
-                <span class="text-gold">{{ question.points }} puan</span>
+                <span class="control-muted">
+                  @if (question.categoryName) {
+                    <span class="control-cat">{{ question.categoryName }}</span>
+                    ·
+                  }
+                  <span class="text-gold">{{ question.points }} puan</span>
+                </span>
               </div>
 
               <div class="control-question-text">{{ question.text }}</div>
@@ -94,26 +98,26 @@
                     }}</span>
                     <span class="host-option-text">{{ option.text }}</span>
                     @if (option.isCorrect) {
-                      <span class="host-option-correct">✅</span>
+                      <span class="host-option-correct">Doğru</span>
                     }
                   </div>
                 }
               </div>
 
               <div class="control-correct">
-                <p class="control-correct-label">✅ Doğru Cevap</p>
+                <p class="control-correct-label">Doğru Cevap</p>
                 <p class="control-correct-text">{{ correctOption()?.text ?? 'Bilinmiyor' }}</p>
               </div>
 
               @if (isLastQuestion()) {
-                <p class="text-gold">Bu son soruydu — “Oyunu Bitir” ile skorları açıkla.</p>
+                <p class="text-gold">Bu son soruydu — “Sınavı Bitir” ile skorları açıklayın.</p>
               }
             } @else {
               <div class="control-empty">
                 @if (status() === 'Waiting') {
-                  <app-spinner label="Oyun başlamadı..." />
+                  <app-spinner label="Sınav henüz başlamadı..." />
                   <p class="control-muted">
-                    “Oyunu Başlat” butonuna basınca ilk soru burada görünecek.
+                    “Sınavı Başlat” butonuna bastığınızda ilk soru burada görünecek.
                   </p>
                 } @else {
                   <p class="control-muted">Soru bilgisi yüklenemedi.</p>
@@ -123,7 +127,7 @@
           </section>
 
           <section class="glass control-panel">
-            <h3 class="control-panel-title">📡 Canlı Cevaplar ({{ liveAnswers().length }})</h3>
+            <h3 class="control-panel-title">Canlı Cevaplar ({{ liveAnswers().length }})</h3>
             @if (liveAnswers().length === 0) {
               <p class="control-muted">Henüz cevap gelmedi.</p>
             } @else {
@@ -131,7 +135,9 @@
                 @for (answer of liveAnswers(); track $index) {
                   <li class="live-item">
                     <span class="live-name">
-                      <span class="live-icon">{{ answer.isCorrect ? '✅' : '❌' }}</span>
+                      <span class="live-icon">{{
+                        answer.isCorrect ? 'Doğru' : 'Yanlış'
+                      }}</span>
                       {{ answer.playerName }}
                     </span>
                     <span class="live-score">{{
@@ -143,7 +149,7 @@
             }
 
             <h3 class="control-panel-title jokers-title">
-              🪄 Kullanılan Jokerler ({{ jokers().length }})
+              Kullanılan Jokerler ({{ jokers().length }})
             </h3>
             @if (jokers().length === 0) {
               <p class="control-muted">Henüz joker kullanılmadı.</p>

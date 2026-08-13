@@ -10,6 +10,8 @@ import { Router } from '@angular/router';
 import { catchError, Observable, throwError } from 'rxjs';
 import { getToken } from './api.service';
 import { AuthService } from './auth.service';
+import { SessionService } from './session.service';
+import { SESSION_TIMEOUT_QUERY } from './idle-timeout.service';
 
 export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
@@ -17,6 +19,7 @@ export const authInterceptor: HttpInterceptorFn = (
 ): Observable<HttpEvent<unknown>> => {
   const router = inject(Router);
   const auth = inject(AuthService);
+  const session = inject(SessionService);
   const token = getToken();
 
   const authReq =
@@ -31,7 +34,9 @@ export const authInterceptor: HttpInterceptorFn = (
         const onLogin = router.url === '/login' || router.url === '/admin';
         if (isAdminCall && !onLogin) {
           auth.logout();
-          void router.navigate(['/login'], { replaceUrl: true });
+          session.clearHost();
+          session.clearPlayer();
+          void router.navigate(['/login'], { queryParams: { [SESSION_TIMEOUT_QUERY]: '1' }, replaceUrl: true });
         }
       }
       return throwError(() => error);

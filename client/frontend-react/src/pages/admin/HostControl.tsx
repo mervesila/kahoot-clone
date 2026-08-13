@@ -20,8 +20,8 @@ import type {
   GameFinishedEvent,
   JokerUsedEvent,
   QuestionStartedEvent,
-  QuizDetailDto,
   ScoreboardDto,
+  SessionQuestionDto,
 } from '@/lib/types'
 
 interface LiveAnswer {
@@ -41,7 +41,7 @@ export function HostControl() {
   const navigate = useNavigate()
 
   const [host, setHost] = useState<HostSession | null>(null)
-  const [quiz, setQuiz] = useState<QuizDetailDto | null>(null)
+  const [sessionQuestions, setSessionQuestions] = useState<SessionQuestionDto[]>([])
   const [status, setStatus] = useState<'Waiting' | 'InGame' | 'Finished'>('Waiting')
   const [questionOrderNo, setQuestionOrderNo] = useState(0)
   const [timeLimit, setTimeLimit] = useState(30)
@@ -74,10 +74,12 @@ export function HostControl() {
     }
     setHost(stored)
     void api
-      .getQuiz(stored.quizId)
-      .then(setQuiz)
+      .getSessionQuestions(stored.sessionId)
+      .then(setSessionQuestions)
       .catch((err) =>
-        setError(err instanceof ApiError ? err.message : 'Quiz bilgileri alınamadı.'),
+        setError(
+          err instanceof ApiError ? err.message : 'Oturum soruları yüklenemedi.',
+        ),
       )
     void api
       .getSessionState(stored.sessionId)
@@ -101,13 +103,15 @@ export function HostControl() {
   }, [status, questionOrderNo])
 
   useEffect(() => {
-    if (status === 'InGame' && quiz) {
-      const question = quiz.questions.find((q) => q.orderNo === questionOrderNo)
+    if (status === 'InGame') {
+      const question = sessionQuestions.find(
+        (q) => q.orderNo === questionOrderNo,
+      )
       if (question) {
         setTimeLimit(question.timeLimitInSeconds)
       }
     }
-  }, [status, questionOrderNo, quiz])
+  }, [status, questionOrderNo, sessionQuestions])
 
   useEffect(() => {
     if (!host) {
@@ -237,13 +241,14 @@ export function HostControl() {
   }
 
   const currentQuestion =
-    quiz?.questions.find((q) => q.orderNo === questionOrderNo) ?? null
+    sessionQuestions.find((q) => q.orderNo === questionOrderNo) ?? null
   const currentQuestionOptions = currentQuestion
     ? sortOptionsById(currentQuestion.options)
     : []
   const correctOption = currentQuestion?.options.find((o) => o.isCorrect)
   const isLastQuestion =
-    quiz !== null && questionOrderNo >= quiz.questions.length && quiz.questions.length > 0
+    sessionQuestions.length > 0 &&
+    questionOrderNo >= sessionQuestions.length
 
   return (
     <div className="flex min-h-full flex-col bg-kahoot-purple">
@@ -339,7 +344,7 @@ export function HostControl() {
                 <>
                   <div className="mb-3 flex items-center justify-between text-sm font-black uppercase tracking-wide text-white/80">
                     <span>
-                      Soru {currentQuestion.orderNo}/{quiz?.questions.length}
+                      Soru {currentQuestion.orderNo}/{sessionQuestions.length}
                     </span>
                     <span className="text-kahoot-yellow">{currentQuestion.points} puan</span>
                   </div>

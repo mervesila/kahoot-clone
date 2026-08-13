@@ -4,43 +4,57 @@
       <app-logo />
     </div>
 
-    <form class="glass anim-float-up entry-form" (ngSubmit)="handleJoin()">
-      <div class="text-center entry-avatar">
-        <app-avatar [emoji]="avatar().emoji" [color]="avatar().color" size="xl" />
-      </div>
+    <form class="glass entry-form anim-fade-in-up" (ngSubmit)="handleJoin()">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Sınav PIN Kodu</mat-label>
+        <input
+          matInput
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="6 haneli PIN"
+          [value]="pinCode()"
+          (input)="onPinChange($any($event.target).value)"
+        />
+      </mat-form-field>
 
-      <app-input
-        label="PIN Kodu"
-        inputMode="numeric"
-        [maxLength]="6"
-        placeholder="6 haneli PIN"
-        [value]="pinCode()"
-        (valueChange)="onPinChange($event)"
-      />
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Ad Soyad</mat-label>
+        <input
+          matInput
+          maxlength="40"
+          placeholder="Örn: Ayşe Yılmaz"
+          [value]="nickname()"
+          (input)="onNicknameChange($any($event.target).value)"
+        />
+        @if (nicknameError()) {
+          <mat-error>{{ nicknameError() }}</mat-error>
+        }
+      </mat-form-field>
 
-      <app-input
-        label="Takma Adın (Nickname)"
-        [maxLength]="40"
-        placeholder="Örn: Kahraman"
-        [value]="nickname()"
-        (valueChange)="onNicknameChange($event)"
-        [error]="nicknameError()"
-      />
-
-      <app-input
-        label="Takım Adı (isteğe bağlı)"
-        [maxLength]="40"
-        placeholder="Takım modunda doldurulur"
-        [(value)]="teamName"
-      />
-
-      <app-avatar-picker [(avatar)]="avatar" />
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Takım Adı (isteğe bağlı)</mat-label>
+        <input
+          matInput
+          maxlength="40"
+          placeholder="Takım modunda doldurulur"
+          [value]="teamName()"
+          (input)="teamName.set($any($event.target).value)"
+        />
+      </mat-form-field>
 
       <app-alert [message]="error()" />
 
-      <app-button type="submit" variant="red" size="lg" [full]="true" [loading]="loading()">
-        Oyuna Katıl 🚀
-      </app-button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        class="entry-submit"
+        [disabled]="loading()"
+      >
+        {{ loading() ? 'Katılıyorum…' : 'Sınava Katıl' }}
+      </button>
+
+      <a routerLink="/" class="entry-back">Ana Sayfa</a>
     </form>
   </div>
 </div>

@@ -1,10 +1,12 @@
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace TKI.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
+    DatabaseFacade Database { get; }
     DbSet<User> Users { get; }
     DbSet<Category> Categories { get; }
     DbSet<Question> Questions { get; }

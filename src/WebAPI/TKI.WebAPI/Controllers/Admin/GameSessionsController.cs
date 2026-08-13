@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TKI.Application.Common.Interfaces;
+using TKI.Application.Features.GameSessions.Queries.GetGameSessionQuestions;
 using TKI.Application.Features.GameSessions.Queries.GetGameSessionReport;
 
 namespace TKI.WebAPI.Controllers.Admin;
@@ -15,6 +16,13 @@ public class GameSessionsController : AdminBaseController
     {
         _mediator = mediator;
         _reportExportService = reportExportService;
+    }
+
+    [HttpGet("{sessionId:guid}/questions")]
+    public async Task<IActionResult> GetQuestions(Guid sessionId)
+    {
+        var questions = await _mediator.Send(new GetGameSessionQuestionsQuery(sessionId));
+        return Ok(questions);
     }
 
     [HttpGet("{sessionId:guid}/report")]

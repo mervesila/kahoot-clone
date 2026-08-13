@@ -1,0 +1,48 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-count {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.picker-add-btn {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.picker-add-btn:hover {
+  text-decoration: underline;
+}
+
+.picker-new-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.picker-new-input {
+  flex: 1;
+}
+
+.picker-new-btn {
+  white-space: nowrap;
+  margin-bottom: 1.25em;
+}
+
+.picker-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--red);
+}

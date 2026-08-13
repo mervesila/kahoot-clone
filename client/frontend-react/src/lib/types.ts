@@ -67,6 +67,9 @@ export interface QuizDto {
   description: string
   isActive: boolean
   questionCount: number
+  level: number
+  passScore: number
+  isDynamic: boolean
 }
 
 export interface CategoryDto {
@@ -97,6 +100,21 @@ export interface QuizDetailDto {
   description: string
   isActive: boolean
   questions: QuizQuestionDto[]
+}
+
+export interface SessionQuestionOptionDto {
+  optionId: string
+  text: string
+  isCorrect: boolean
+}
+
+export interface SessionQuestionDto {
+  questionId: string
+  text: string
+  orderNo: number
+  timeLimitInSeconds: number
+  points: number
+  options: SessionQuestionOptionDto[]
 }
 
 export interface ScoreboardPlayerDto {

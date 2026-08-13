@@ -3,5 +3,9 @@
   [style.background-color]="effectiveColor"
   aria-hidden="true"
 >
-  <span class="avatar-emoji">{{ effectiveEmoji }}</span>
+  @if (effectiveFallback) {
+    <span>{{ effectiveFallback }}</span>
+  } @else {
+    <span class="avatar-emoji">{{ effectiveEmoji }}</span>
+  }
 </div>

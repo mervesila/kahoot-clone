@@ -1,26 +1,35 @@
-<div class="page-center">
+<div class="page-center home-bg">
   <div class="home-col">
     <app-logo size="lg" />
 
-    <p class="home-intro">
-      TKİ Kurum Kültürü ve İSG bilgi yarışmasına hoş geldin! Oyuncu olarak katıl ya da yönetici
-      olarak yeni bir oyun başlat.
-    </p>
+    <div class="home-header">
+      <h1 class="home-title">TKİ Akademi Sınav Portalı</h1>
+      <p class="home-intro">
+        Kurum kültürü ve İSG eğitim sınavlarına katılın. Katılımcı olarak PIN kodunuzla
+        girebilir veya yönetici olarak sınav başlatabilirsiniz.
+      </p>
+    </div>
 
     <div class="grid-2 home-cards">
       <div class="glass home-card">
-        <span class="home-emoji">🎮</span>
-        <h2 class="home-title">Oyuncu</h2>
-        <p class="home-desc">PIN koduyla oyuna katıl ve şıklara basarak yarış.</p>
-        <a routerLink="/player" class="btn btn-primary btn-lg btn-full">Oyuna Katıl</a>
+        <h2 class="home-card-title">Sınav Portalı</h2>
+        <p class="home-desc">PIN kodunu girerek canlı sınava katılın ve soruları yanıtlayın.</p>
+        <a routerLink="/player" mat-flat-button color="primary" class="home-btn">
+          Sınava Katıl
+        </a>
       </div>
 
       <div class="glass home-card">
-        <span class="home-emoji">🧑‍💼</span>
-        <h2 class="home-title">Yönetici</h2>
-        <p class="home-desc">Quiz oluştur, oyunu başlat ve raporları indir.</p>
-        <a routerLink="/admin" class="btn btn-blue btn-lg btn-full">Yönetim Paneli</a>
+        <h2 class="home-card-title">Quiz Yönetimi</h2>
+        <p class="home-desc">Sınavları yönetin, canlı oturum başlatın ve raporları indirin.</p>
+        <a routerLink="/admin" mat-flat-button class="home-btn home-btn-navy">
+          Yönetim Paneli
+        </a>
       </div>
     </div>
+
+    <p class="home-foot">
+      Seviye zinciri: Seviye 1 tamamlanmadan Seviye 2 sınavları açılmaz.
+    </p>
   </div>
 </div>

@@ -1,14 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { AlertComponent } from '../../../shared/alert/alert';
-import { AppButtonComponent } from '../../../shared/app-button/app-button';
-import { AppInputComponent } from '../../../shared/app-input/app-input';
-import { AvatarComponent } from '../../../shared/avatar/avatar';
-import { AvatarPickerComponent } from '../../../shared/avatar-picker/avatar-picker';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { ApiError, ApiService } from '../../../services/api.service';
-import { DEFAULT_AVATAR, type Avatar } from '../../../data/avatars';
+import { DEFAULT_AVATAR } from '../../../data/avatars';
 import { GameHubService } from '../../../services/game-hub.service';
 import { SessionService } from '../../../services/session.service';
 
@@ -16,12 +15,12 @@ import { SessionService } from '../../../services/session.service';
   selector: 'app-player-entry',
   imports: [
     AlertComponent,
-    AppButtonComponent,
-    AppInputComponent,
-    AvatarComponent,
-    AvatarPickerComponent,
     FormsModule,
     LogoComponent,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    RouterLink,
   ],
   templateUrl: './player-entry.html',
   styleUrl: './player-entry.scss',
@@ -35,7 +34,6 @@ export class PlayerEntryComponent {
   readonly pinCode = signal('');
   readonly nickname = signal('');
   readonly teamName = signal('');
-  readonly avatar = signal<Avatar>(DEFAULT_AVATAR);
   readonly error = signal('');
   readonly nicknameError = signal('');
   readonly loading = signal(false);
@@ -60,7 +58,7 @@ export class PlayerEntryComponent {
       return;
     }
     if (!this.nickname().trim()) {
-      this.error.set('Takma adını girmelisin.');
+      this.error.set('Ad Soyad bilgisi zorunludur.');
       return;
     }
 
@@ -71,10 +69,10 @@ export class PlayerEntryComponent {
         registrationNumber: this.sessions.getClientId(),
         firstName: this.nickname().trim(),
         lastName: '',
-        department: 'Oyuncu',
+        department: 'Katılımcı',
         teamName: this.teamName().trim() || null,
-        avatarEmoji: this.avatar().emoji,
-        avatarColor: this.avatar().color,
+        avatarEmoji: DEFAULT_AVATAR.emoji,
+        avatarColor: DEFAULT_AVATAR.color,
       });
 
       this.sessions.savePlayer({
@@ -85,17 +83,11 @@ export class PlayerEntryComponent {
         playerName: result.playerName,
         isTeamMode: false,
         teamName: this.teamName().trim() || null,
-        avatar: this.avatar(),
+        avatar: DEFAULT_AVATAR,
       });
 
       await this.hub.getConnection();
       await this.hub.joinGameGroup(result.sessionId);
-      await this.hub.updatePlayerAvatar(
-        result.sessionId,
-        result.playerId,
-        this.avatar().emoji,
-        this.avatar().color,
-      );
 
       await this.router.navigate(['/player/lobby']);
     } catch (err) {
@@ -105,12 +97,12 @@ export class PlayerEntryComponent {
         } else {
           this.error.set(
             err.status === 404
-              ? 'Bu PIN ile aktif bir oyun bulunamadı. PIN kodu kontrol et.'
+              ? 'Bu PIN ile aktif bir sınav bulunamadı. PIN kodunu kontrol edin.'
               : err.message,
           );
         }
       } else {
-        this.error.set('Sunucuya bağlanılamadı. Lütfen tekrar dene.');
+        this.error.set('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
       }
     } finally {
       this.loading.set(false);

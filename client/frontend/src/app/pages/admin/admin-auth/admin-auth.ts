@@ -1,24 +1,34 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { AlertComponent } from '../../../shared/alert/alert';
-import { AppButtonComponent } from '../../../shared/app-button/app-button';
-import { AppInputComponent } from '../../../shared/app-input/app-input';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { ApiError } from '../../../services/api.service';
 import { AuthService } from '../../../services/auth.service';
+import { SESSION_TIMEOUT_FLAG, SESSION_TIMEOUT_MESSAGE, SESSION_TIMEOUT_QUERY } from '../../../services/idle-timeout.service';
 
 type Mode = 'login' | 'register';
 
 @Component({
   selector: 'app-admin-auth',
-  imports: [AlertComponent, AppButtonComponent, AppInputComponent, FormsModule, LogoComponent],
+  imports: [
+    AlertComponent,
+    FormsModule,
+    LogoComponent,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
   templateUrl: './admin-auth.html',
   styleUrl: './admin-auth.scss',
 })
 export class AdminAuthComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly mode = signal<Mode>('login');
   readonly registrationNumber = signal('');
@@ -98,6 +108,11 @@ export class AdminAuthComponent {
   constructor() {
     if (this.auth.isAuthenticated()) {
       void this.router.navigate(['/admin/dashboard'], { replaceUrl: true });
+    }
+    const timedOut = this.route.snapshot.queryParamMap.get(SESSION_TIMEOUT_QUERY) === '1';
+    if (timedOut || localStorage.getItem(SESSION_TIMEOUT_FLAG) === '1') {
+      this.error.set(SESSION_TIMEOUT_MESSAGE);
+      localStorage.removeItem(SESSION_TIMEOUT_FLAG);
     }
   }
 

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Alert } from '@/components/Alert'
 import { KahootButton } from '@/components/KahootButton'
-import { KahootInput } from '@/components/KahootInput'
 import { Logo } from '@/components/Logo'
 import { Modal } from '@/components/Modal'
 import { QuizBuilderModal } from '@/components/QuizBuilderModal'
@@ -11,14 +10,6 @@ import { api, ApiError } from '@/lib/api'
 import { useAuth } from '@/context/auth'
 import { hostSession } from '@/lib/hostSession'
 import type { CategoryDto, QuizDetailDto, QuizDto } from '@/lib/types'
-
-interface AiQuizForm {
-  title: string
-  description: string
-  topic: string
-  questionCount: string
-  categoryId: number
-}
 
 export function AdminDashboard() {
   const { user, logout } = useAuth()
@@ -34,20 +25,9 @@ export function AdminDashboard() {
   const [builderMode, setBuilderMode] = useState<'create' | 'edit'>('create')
   const [editQuiz, setEditQuiz] = useState<QuizDetailDto | null>(null)
   const [busyEditId, setBusyEditId] = useState<string | null>(null)
-  const [aiOpen, setAiOpen] = useState(false)
   const [teamMode, setTeamMode] = useState(false)
   const [busyQuizId, setBusyQuizId] = useState<string | null>(null)
 
-  const [aiQuiz, setAiQuiz] = useState<AiQuizForm>({
-    title: '',
-    description: '',
-    topic: '',
-    questionCount: '5',
-    categoryId: 1,
-  })
-  const [topicError, setTopicError] = useState(false)
-  const [aiTitleError, setAiTitleError] = useState('')
-  const [apiErrors, setApiErrors] = useState<Record<string, string[]> | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<QuizDto | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -66,16 +46,7 @@ export function AdminDashboard() {
     void loadQuizzes()
     void api
       .getCategories()
-      .then((data) => {
-        setCategories(data)
-        if (data.length > 0) {
-          setAiQuiz((prev) =>
-            data.some((c) => c.id === prev.categoryId)
-              ? prev
-              : { ...prev, categoryId: data[0].id },
-          )
-        }
-      })
+      .then((data) => setCategories(data))
       .catch(() => setCategories([]))
   }, [loadQuizzes])
 
@@ -130,54 +101,6 @@ export function AdminDashboard() {
     void loadQuizzes()
   }
 
-  async function handleGenerateAiQuiz(event: FormEvent) {
-    event.preventDefault()
-    setError('')
-    setMessage('')
-    setApiErrors(null)
-
-    if (!aiQuiz.topic.trim()) {
-      setTopicError(true)
-      setError('Lütfen bir quiz konusu girin.')
-      return
-    }
-    setTopicError(false)
-
-    try {
-      await api.generateAiQuiz({
-        ...aiQuiz,
-        title: aiQuiz.title || `${aiQuiz.topic} AI Quiz`,
-        questionCount: Math.min(
-          Math.max(parseInt(aiQuiz.questionCount, 10) || 1, 1),
-          50,
-        ),
-      })
-      setAiOpen(false)
-      setAiQuiz({
-        title: '',
-        description: '',
-        topic: '',
-        questionCount: '5',
-        categoryId: categories[0]?.id ?? 1,
-      })
-      setMessage('AI quiz oluşturuldu.')
-      await loadQuizzes()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'AI quiz oluşturulamadı.')
-      setApiErrors(err instanceof ApiError && err.errors ? err.errors : null)
-      if (err instanceof ApiError) {
-        const titleError = err.errors?.Title?.[0]
-        if (titleError) {
-          setAiTitleError(titleError)
-          setAiQuiz((prev) => ({
-            ...prev,
-            title: prev.title || `${prev.topic} AI Quiz`,
-          }))
-        }
-      }
-    }
-  }
-
   async function handleDeleteQuiz() {
     if (!deleteTarget) return
     setDeleting(true)
@@ -227,20 +150,6 @@ export function AdminDashboard() {
             >
               + Yeni Quiz
             </KahootButton>
-            <KahootButton
-              variant="yellow"
-              size="md"
-              onClick={() => {
-                setError('')
-                setMessage('')
-                setTopicError(false)
-                setAiTitleError('')
-                setApiErrors(null)
-                setAiOpen(true)
-              }}
-            >
-              🤖 AI ile Üret
-            </KahootButton>
           </div>
         </div>
 
@@ -264,7 +173,7 @@ export function AdminDashboard() {
         ) : quizzes && quizzes.length === 0 ? (
           <div className="rounded-3xl bg-white/10 p-10 text-center">
             <p className="text-2xl font-black">Henüz quiz yok</p>
-            <p className="mt-2 text-white/75">Yeni quiz oluştur veya AI ile soru üret.</p>
+            <p className="mt-2 text-white/75">Yeni quiz oluştur veya quizin sorularını düzenle.</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -309,14 +218,16 @@ export function AdminDashboard() {
                   <p className="line-clamp-2 text-sm text-white/75">{quiz.description}</p>
                 ) : null}
                 <p className="text-sm font-bold text-kahoot-yellow">
-                  {quiz.questionCount} soru
+                  {quiz.isDynamic
+                    ? 'Dinamik · 50 soruluk havuzdan 10 soru'
+                    : `${quiz.questionCount} soru`}
                 </p>
                 <KahootButton
                   variant="red"
                   size="md"
                   full
                   loading={busyQuizId === quiz.id}
-                  disabled={quiz.questionCount === 0}
+                  disabled={quiz.questionCount === 0 && !quiz.isDynamic}
                   onClick={() => void handleStartGame(quiz)}
                 >
                   🚀 Oyunu Başlat
@@ -335,104 +246,6 @@ export function AdminDashboard() {
         onClose={() => setBuilderOpen(false)}
         onSaved={handleBuilderSaved}
       />
-
-      <Modal open={aiOpen} title="🤖 AI ile Quiz Üret" onClose={() => setAiOpen(false)} wide>
-        <form onSubmit={handleGenerateAiQuiz} className="flex flex-col gap-4">
-          <KahootInput
-            label="Konu / Başlık"
-            placeholder="Örn: Yangın Güvenliği, İlk Yardım..."
-            value={aiQuiz.topic}
-            error={topicError ? 'Lütfen bir quiz konusu girin' : undefined}
-            onChange={(e) => {
-              setAiQuiz({ ...aiQuiz, topic: e.target.value })
-              if (topicError) setTopicError(false)
-            }}
-          />
-
-          <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-white/90">
-                Kategori
-              </span>
-              <select
-                value={aiQuiz.categoryId}
-                onChange={(e) => setAiQuiz({ ...aiQuiz, categoryId: Number(e.target.value) })}
-                className="w-full rounded-lg border-2 border-kahoot-purple/20 bg-white px-5 py-3.5 text-lg font-bold text-kahoot-purple outline-none focus:border-kahoot-yellow"
-              >
-                {categories.length === 0 ? (
-                  <option value={0}>Kategori bulunamadı</option>
-                ) : (
-                  categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-white/90">
-                Soru Sayısı
-              </span>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={aiQuiz.questionCount}
-                onChange={(e) =>
-                  setAiQuiz({ ...aiQuiz, questionCount: e.target.value })
-                }
-                onBlur={() => {
-                  const val = parseInt(aiQuiz.questionCount, 10)
-                  if (Number.isNaN(val) || val < 1) {
-                    setAiQuiz({ ...aiQuiz, questionCount: '5' })
-                  } else if (val > 50) {
-                    setAiQuiz({ ...aiQuiz, questionCount: '50' })
-                  } else {
-                    setAiQuiz({ ...aiQuiz, questionCount: String(val) })
-                  }
-                }}
-                onFocus={(e) => e.target.select()}
-                className="w-full rounded-lg border-2 border-kahoot-purple/20 bg-white px-5 py-3.5 text-lg font-bold text-kahoot-purple outline-none focus:border-kahoot-yellow"
-              />
-            </label>
-          </div>
-
-          <KahootInput
-            label="Quiz Başlığı (isteğe bağlı)"
-            placeholder="Boş bırakılırsa konu adı kullanılır"
-            value={aiQuiz.title}
-            error={aiTitleError || undefined}
-            onChange={(e) => {
-              setAiQuiz({ ...aiQuiz, title: e.target.value })
-              if (aiTitleError) setAiTitleError('')
-            }}
-          />
-          <KahootInput
-            label="Açıklama (isteğe bağlı)"
-            value={aiQuiz.description}
-            onChange={(e) => setAiQuiz({ ...aiQuiz, description: e.target.value })}
-          />
-          <Alert>
-            {error}
-            {apiErrors && (
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {Object.entries(apiErrors).flatMap(([field, messages]) =>
-                  messages.map((msg) => (
-                    <li key={`${field}-${msg}`}>
-                      <span className="font-bold">{field}:</span> {msg}
-                    </li>
-                  )),
-                )}
-              </ul>
-            )}
-          </Alert>
-          <KahootButton type="submit" variant="yellow" size="lg" full>
-            ✨ Üret ve Kaydet
-          </KahootButton>
-        </form>
-      </Modal>
 
       <Modal
         open={deleteTarget !== null}

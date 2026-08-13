@@ -1,13 +1,14 @@
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { AlertComponent } from '../../../shared/alert/alert';
 import { AnswerButtonComponent } from '../../../shared/answer-button/answer-button';
-import { AppButtonComponent } from '../../../shared/app-button/app-button';
 import { CountdownBarComponent } from '../../../shared/countdown-bar/countdown-bar';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { ScoreTableComponent } from '../../../shared/score-table/score-table';
 import { SoundToggleComponent } from '../../../shared/sound-toggle/sound-toggle';
+import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiError, ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
@@ -31,11 +32,12 @@ const EXTRA_TIME_SECONDS = 15;
   imports: [
     AlertComponent,
     AnswerButtonComponent,
-    AppButtonComponent,
     CountdownBarComponent,
     LogoComponent,
+    MatButtonModule,
     ScoreTableComponent,
     SoundToggleComponent,
+    SpinnerComponent,
   ],
   templateUrl: './player-game.html',
   styleUrl: './player-game.scss',

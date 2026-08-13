@@ -1,8 +1,8 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { AlertComponent } from '../../../shared/alert/alert';
-import { AppButtonComponent } from '../../../shared/app-button/app-button';
 import { AvatarComponent } from '../../../shared/avatar/avatar';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { SoundToggleComponent } from '../../../shared/sound-toggle/sound-toggle';
@@ -31,9 +31,9 @@ interface LobbyPlayer {
   selector: 'app-host-lobby',
   imports: [
     AlertComponent,
-    AppButtonComponent,
     AvatarComponent,
     LogoComponent,
+    MatButtonModule,
     RouterLink,
     SoundToggleComponent,
     SpinnerComponent,

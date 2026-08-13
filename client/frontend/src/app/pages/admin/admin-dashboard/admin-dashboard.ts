@@ -1,24 +1,36 @@
-import { Component, effect, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTableModule } from '@angular/material/table';
 import { AlertComponent } from '../../../shared/alert/alert';
-import { AppButtonComponent } from '../../../shared/app-button/app-button';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { ModalComponent } from '../../../shared/modal/modal';
 import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiError, ApiService } from '../../../services/api.service';
 import { AuthService } from '../../../services/auth.service';
 import { SessionService } from '../../../services/session.service';
+import {
+  QuizSettingsDialogComponent,
+  type QuizSettingsData,
+} from './quiz-settings-dialog';
+import {
+  QuizCreateDialogComponent,
+  type QuizCreateResult,
+} from './quiz-create-dialog';
 import type { CategoryDto, QuizDto } from '../../../models/types';
 
 @Component({
   selector: 'app-admin-dashboard',
   imports: [
     AlertComponent,
-    AppButtonComponent,
-    FormsModule,
     LogoComponent,
+    MatButtonModule,
+    MatSlideToggleModule,
+    MatTableModule,
     ModalComponent,
+    RouterLink,
     SpinnerComponent,
   ],
   templateUrl: './admin-dashboard.html',
@@ -29,6 +41,7 @@ export class AdminDashboardComponent {
   private readonly api = inject(ApiService);
   private readonly sessions = inject(SessionService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
   readonly quizzes = signal<QuizDto[] | null>(null);
   readonly categories = signal<CategoryDto[]>([]);
@@ -42,32 +55,18 @@ export class AdminDashboardComponent {
   readonly deleteTarget = signal<QuizDto | null>(null);
   readonly deleting = signal(false);
 
-  readonly settingsOpen = signal(false);
-  readonly settingsTarget = signal<QuizDto | null>(null);
-  readonly settingsTitle = signal('');
-  readonly settingsDescription = signal('');
-  readonly settingsCategoryId = signal<number | null>(null);
-  readonly settingsDefaultTime = signal(30);
-  readonly settingsIsActive = signal(true);
-  readonly settingsJokersEnabled = signal(true);
-  readonly settingsLevel = signal(1);
-  readonly settingsPassScore = signal(70);
-  readonly settingsSaving = signal(false);
-  readonly settingsError = signal('');
-
-  protected readonly settingsTimeOptions = [10, 20, 30, 60];
+  protected readonly displayedColumns = ['name', 'level', 'status', 'questions', 'pass', 'actions'];
 
   protected readonly currentUser = this.auth.user;
 
+  protected readonly quizCount = computed(() => this.quizzes()?.length ?? 0);
+
   constructor() {
     void this.loadQuizzes();
-    void this.api
-      .getCategories()
-      .then((data) => this.categories.set(data))
-      .catch(() => this.categories.set([]));
+    void this.loadCategories();
 
     effect(() => {
-      // Team mode checkbox'ı "takım modu" ipucu gösterir; ayrı bir yan etki yok
+      // Takım modu seçimi yeni oturumlar için kullanılır
       this.teamMode();
     });
   }
@@ -76,7 +75,7 @@ export class AdminDashboardComponent {
     try {
       this.quizzes.set(await this.api.getQuizzes());
     } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Quizler yüklenemedi.');
+      this.error.set(err instanceof ApiError ? err.message : 'Sınavlar yüklenemedi.');
     } finally {
       this.loading.set(false);
     }
@@ -85,7 +84,7 @@ export class AdminDashboardComponent {
   async handleStartGame(quiz: QuizDto): Promise<void> {
     this.error.set('');
     if (!quiz.isActive) {
-      this.error.set('Pasif durumdaki quizler oyuna başlatılamaz.');
+      this.error.set('Pasif durumdaki sınavlar başlatılamaz.');
       return;
     }
     this.busyQuizId.set(quiz.id);
@@ -103,10 +102,65 @@ export class AdminDashboardComponent {
       });
       await this.router.navigate(['/admin/host', session.id]);
     } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Oyun başlatılamadı.');
+      this.error.set(err instanceof ApiError ? err.message : 'Sınav başlatılamadı.');
     } finally {
       this.busyQuizId.set(null);
     }
+  }
+
+  openSettings(quiz: QuizDto): void {
+    this.error.set('');
+    this.message.set('');
+    const data: QuizSettingsData = {
+      quiz,
+      categories: this.categories(),
+    };
+    const ref = this.dialog.open(QuizSettingsDialogComponent, {
+      data,
+      width: '560px',
+      maxWidth: '96vw',
+    });
+    ref.afterClosed().subscribe((updates) => {
+      if (!updates) {
+        return;
+      }
+      this.quizzes.update((prev) =>
+        prev ? prev.map((q) => (q.id === quiz.id ? { ...q, ...updates } : q)) : prev,
+      );
+      void this.loadCategories();
+      this.message.set('Sınav ayarları kaydedildi.');
+    });
+  }
+
+  openCreateQuiz(): void {
+    this.error.set('');
+    this.message.set('');
+    const ref = this.dialog.open(QuizCreateDialogComponent, {
+      data: { categories: this.categories() },
+      width: '560px',
+      maxWidth: '96vw',
+    });
+    ref.afterClosed().subscribe((result: QuizCreateResult | null) => {
+      if (!result) {
+        return;
+      }
+      void this.loadQuizzes();
+      void this.loadCategories();
+      this.message.set(`“${result.title}” sınavı oluşturuldu.`);
+    });
+  }
+
+  private loadCategories(): Promise<void> {
+    return this.api
+      .getCategories()
+      .then((data) => this.categories.set(data))
+      .catch(() => this.categories.set([]));
+  }
+
+  confirmDelete(quiz: QuizDto): void {
+    this.error.set('');
+    this.message.set('');
+    this.deleteTarget.set(quiz);
   }
 
   async handleDeleteQuiz(): Promise<void> {
@@ -121,9 +175,9 @@ export class AdminDashboardComponent {
       await this.api.deleteQuiz(target.id);
       this.quizzes.update((prev) => (prev ? prev.filter((q) => q.id !== target.id) : prev));
       this.deleteTarget.set(null);
-      this.message.set('Quiz başarıyla silindi.');
+      this.message.set('Sınav başarıyla silindi.');
     } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Quiz silinemedi.');
+      this.error.set(err instanceof ApiError ? err.message : 'Sınav silinemedi.');
     } finally {
       this.deleting.set(false);
     }
@@ -134,72 +188,22 @@ export class AdminDashboardComponent {
     void this.router.navigate(['/login'], { replaceUrl: true });
   }
 
-  openSettings(quiz: QuizDto): void {
-    this.error.set('');
-    this.message.set('');
-    this.settingsTarget.set(quiz);
-    this.settingsTitle.set(quiz.title);
-    this.settingsDescription.set(quiz.description);
-    this.settingsCategoryId.set(quiz.categoryId);
-    this.settingsDefaultTime.set(quiz.defaultTimeLimitInSeconds);
-    this.settingsIsActive.set(quiz.isActive);
-    this.settingsJokersEnabled.set(quiz.jokersEnabled);
-    this.settingsLevel.set(quiz.level);
-    this.settingsPassScore.set(quiz.passScore);
-    this.settingsError.set('');
-    this.settingsOpen.set(true);
+  categoryName(categoryId: number | null): string {
+    if (categoryId === null) {
+      return '';
+    }
+    return this.categories().find((c) => c.id === categoryId)?.name ?? '';
   }
 
-  closeSettings(): void {
-    if (this.settingsSaving()) {
-      return;
+  questionLabel(quiz: QuizDto): string {
+    if (quiz.isDynamic) {
+      const category = this.categoryName(quiz.categoryId);
+      return category ? `10 soru (${category} havuzundan)` : '10 soru (havuzdan)';
     }
-    this.settingsOpen.set(false);
-    this.settingsTarget.set(null);
+    return `${quiz.questionCount} soru`;
   }
 
-  onSettingsCategoryChange(event: Event): void {
-    const value = Number((event.target as HTMLInputElement).value);
-    this.settingsCategoryId.set(value > 0 ? value : null);
-  }
-
-  async saveSettings(): Promise<void> {
-    const target = this.settingsTarget();
-    if (!target || this.settingsSaving()) {
-      return;
-    }
-    const title = this.settingsTitle().trim();
-    if (!title) {
-      this.settingsError.set('Quiz adı boş olamaz.');
-      return;
-    }
-
-    this.settingsSaving.set(true);
-    this.settingsError.set('');
-    try {
-      const updates = {
-        title,
-        description: this.settingsDescription(),
-        isActive: this.settingsIsActive(),
-        categoryId: this.settingsCategoryId(),
-        level: this.settingsLevel(),
-        passScore: this.settingsPassScore(),
-        defaultTimeLimitInSeconds: this.settingsDefaultTime(),
-        jokersEnabled: this.settingsJokersEnabled(),
-      };
-      await this.api.updateQuiz(target.id, updates);
-      this.quizzes.update((prev) =>
-        prev ? prev.map((q) => (q.id === target.id ? { ...q, ...updates } : q)) : prev,
-      );
-      this.settingsOpen.set(false);
-      this.settingsTarget.set(null);
-      this.message.set('Quiz ayarları kaydedildi.');
-    } catch (err) {
-      this.settingsError.set(
-        err instanceof ApiError ? err.message : 'Quiz ayarları kaydedilemedi.',
-      );
-    } finally {
-      this.settingsSaving.set(false);
-    }
+  levelLabel(level: number): string {
+    return `Seviye ${level}`;
   }
 }

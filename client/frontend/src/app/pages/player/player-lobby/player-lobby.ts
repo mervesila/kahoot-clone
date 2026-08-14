@@ -41,7 +41,23 @@ export class PlayerLobbyComponent {
 
     let relayDisconnect: (() => void) | null = null;
     if (environment.demo) {
-      relayDisconnect = this.relay.connect(stored.pinCode, false);
+      // Haberleşme kanalını açık tut; optimistik katılımda henüz bilinmeyen
+      // gerçek sessionId'yi announce/state mesajlarından benimse.
+      relayDisconnect = this.relay.connect(stored.pinCode, false, (msg) => {
+        const current = this.sessions.loadPlayer();
+        if (!current) {
+          return;
+        }
+        if (msg.type === 'announce' && msg.pinCode === stored.pinCode) {
+          this.sessions.savePlayer({
+            ...current,
+            sessionId: msg.sessionId,
+            quizTitle: msg.quizTitle,
+          });
+        } else if (msg.type === 'state' && current.sessionId !== msg.sessionId) {
+          this.sessions.savePlayer({ ...current, sessionId: msg.sessionId });
+        }
+      });
     }
 
     const goToGame = (): void => {

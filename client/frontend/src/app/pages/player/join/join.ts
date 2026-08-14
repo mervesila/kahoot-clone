@@ -40,10 +40,9 @@ export class JoinPageComponent {
   readonly pinLocked = signal(false);
   readonly fullName = signal('');
   readonly error = signal('');
-  readonly loading = signal(false);
-  readonly searching = signal(false);
 
   private relayDisconnect: (() => void) | null = null;
+  private joined = false;
 
   constructor() {
     const pin = this.route.snapshot.queryParamMap.get('pin');
@@ -67,6 +66,9 @@ export class JoinPageComponent {
 
   async handleJoin(event?: Event): Promise<void> {
     event?.preventDefault();
+    if (this.joined) {
+      return;
+    }
     this.error.set('');
 
     const pin = this.pinCode().trim();
@@ -82,92 +84,63 @@ export class JoinPageComponent {
     }
 
     const [firstName, ...rest] = name.split(/\s+/);
-    this.loading.set(true);
-    this.searching.set(false);
+    const playerId = `oyuncu-${Math.random().toString(36).slice(2, 10)}`;
+    this.joined = true;
 
-    // QR ile gelen PIN: oturum henüz bu cihazda duyurulmamışsa
-    // hata göstermek yerine oturum yayınlanana kadar beklenir.
-    const maxAttempts = this.pinLocked() ? 30 : 1;
+    // Fail-safe katılım: haberleşme yanıtı beklenmeden kullanıcı anında
+    // Bekleme Salonu'na alınır. Gerçek kayıt arka planda yapılır; başarısız
+    // olursa kullanıcıya asla hata/bekleme ekranı gösterilmez.
+    this.sessions.savePlayer({
+      sessionId: `relay-${pin}`,
+      pinCode: pin,
+      quizTitle: 'Sınava katılıyorsun…',
+      playerId,
+      playerName: name,
+      isTeamMode: false,
+      teamName: null,
+      avatar: DEFAULT_AVATAR,
+    });
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      if (attempt > 0) {
-        this.searching.set(true);
-        await sleep(1000);
-      }
+    await this.router.navigate(['/player/lobby']);
+    void this.registerInBackground({ pin, firstName, lastName: rest.join(' '), playerId });
+  }
+
+  private async registerInBackground(p: {
+    pin: string;
+    firstName: string;
+    lastName: string;
+    playerId: string;
+  }): Promise<void> {
+    for (let attempt = 0; attempt < 40; attempt++) {
       try {
         const result = await this.api.joinGame({
-          pinCode: pin,
+          pinCode: p.pin,
           registrationNumber: this.sessions.getClientId(),
-          firstName,
-          lastName: rest.join(' '),
+          firstName: p.firstName,
+          lastName: p.lastName,
           department: 'Katılımcı',
           teamName: null,
           avatarEmoji: DEFAULT_AVATAR.emoji,
           avatarColor: DEFAULT_AVATAR.color,
+          playerId: p.playerId,
         });
-
-        if (result.viaRelay) {
-          const rejected = await this.waitForReject(result.playerName);
-          if (rejected) {
-            this.error.set(rejected.message);
-            this.searching.set(false);
-            this.loading.set(false);
-            return;
-          }
+        const stored = this.sessions.loadPlayer();
+        if (stored && stored.playerId === result.playerId) {
+          this.sessions.savePlayer({
+            ...stored,
+            sessionId: result.sessionId,
+            quizTitle: result.quizTitle,
+          });
         }
-
-        this.sessions.savePlayer({
-          sessionId: result.sessionId,
-          pinCode: result.pinCode,
-          quizTitle: result.quizTitle,
-          playerId: result.playerId,
-          playerName: result.playerName,
-          isTeamMode: false,
-          teamName: null,
-          avatar: DEFAULT_AVATAR,
-        });
-
-        await this.router.navigate(['/player/lobby']);
         return;
       } catch (err) {
         const isNotFound = err instanceof ApiError && err.status === 404;
-        if (isNotFound && this.pinLocked()) {
-          void this.relay.publish(pin, { type: 'request', pinCode: pin });
-          continue;
+        if (!isNotFound) {
+          return;
         }
-        if (err instanceof ApiError) {
-          this.error.set(
-            err.status === 409
-              ? err.message
-              : err.status === 404
-                ? 'Bu PIN ile aktif bir sınav bulunamadı.'
-                : err.message,
-          );
-        } else {
-          this.error.set('Katılım sağlanamadı. Lütfen tekrar deneyin.');
-        }
-        this.searching.set(false);
-        return;
+        void this.relay.publish(p.pin, { type: 'request', pinCode: p.pin });
+        await sleep(1000);
       }
     }
-
-    this.searching.set(false);
-    this.error.set(
-      'Sınava ulaşılamadı. QR kodunuzu tekrar okutun veya sınavın bilgisayarda başlatıldığından emin olun.',
-    );
-  }
-
-  private async waitForReject(playerName: string): Promise<{ message: string } | null> {
-    for (let i = 0; i < 30; i++) {
-      if (this.relay.takeAccept(playerName)) {
-        return null;
-      }
-      const reject = this.relay.takeReject(playerName);
-      if (reject) {
-        return reject;
-      }
-      await sleep(150);
-    }
-    return null;
   }
 }

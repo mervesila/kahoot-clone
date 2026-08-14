@@ -468,12 +468,27 @@ export class MockApiService extends ApiService {
     };
   }
 
+  private generatePinCode(): string {
+    const used = new Set([...this.sessions.values()].map((s) => s.pinCode));
+    for (let i = 0; i < 50; i++) {
+      const length = Math.random() < 0.5 ? 4 : 6;
+      let digits = '';
+      for (let j = 0; j < length; j++) {
+        digits += Math.floor(Math.random() * 10);
+      }
+      if (!used.has(digits)) {
+        return digits;
+      }
+    }
+    return String(Date.now()).slice(-6);
+  }
+
   // --- Oturum akışı (canlı) ---
   override async createGameSession(data: { quizId: string; isTeamMode: boolean }): Promise<GameSessionDto> {
     this.sessionCounter += 1;
     const quiz = this.quizzes.find((q) => q.id === data.quizId);
-    const id = `demo-session-${this.sessionCounter}`;
-    const pinCode = String(1000 + (this.sessionCounter * 7) % 9000);
+    const id = `demo-session-${Date.now().toString(36)}${this.sessionCounter}`;
+    const pinCode = this.generatePinCode();
     const quizTitle = quiz?.title ?? 'Demo Sınav';
     const categoryId = quiz?.categoryId ?? null;
     const categoryName = this.categories.find((c) => c.id === categoryId)?.name ?? 'İSG';
@@ -612,7 +627,7 @@ export class MockApiService extends ApiService {
         throw new ApiError(409, 'Bu isim zaten lobide kullanılıyor.');
       }
 
-      const playerId = uid('oyuncu');
+      const playerId = data.playerId ?? uid('oyuncu');
       participants.push({
         playerId,
         playerName,
@@ -638,7 +653,7 @@ export class MockApiService extends ApiService {
       throw new ApiError(404, 'Bu PIN ile aktif bir sınav bulunamadı.');
     }
 
-    const playerId = uid('oyuncu');
+    const playerId = data.playerId ?? uid('oyuncu');
     void this.relay.publish(data.pinCode, {
       type: 'join',
       sessionId: announced.sessionId,

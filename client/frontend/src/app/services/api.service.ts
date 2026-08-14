@@ -60,6 +60,7 @@ export interface JoinGameSessionRequest {
   teamName?: string | null;
   avatarEmoji?: string | null;
   avatarColor?: string | null;
+  playerId?: string;
 }
 
 export interface LoginRequest {

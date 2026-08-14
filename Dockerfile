@@ -5,6 +5,6 @@ RUN dotnet restore src/WebAPI/TKI.WebAPI/TKI.WebAPI.csproj && dotnet publish src
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "TKI.WebAPI.dll"]
+ENTRYPOINT ["/bin/sh", "-c", "ASPNETCORE_URLS=http://+:${PORT:-8080} dotnet TKI.WebAPI.dll"]

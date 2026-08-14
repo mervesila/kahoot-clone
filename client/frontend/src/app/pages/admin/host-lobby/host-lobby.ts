@@ -12,6 +12,7 @@ import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
 import { SessionService, type HostSession } from '../../../services/session.service';
 import { DEFAULT_AVATAR } from '../../../data/avatars';
+import { environment } from '../../../../environments/environment';
 import type {
   PlayerAvatarUpdatedEvent,
   PlayerJoinedEvent,
@@ -101,10 +102,12 @@ export class HostLobbyComponent {
         }
       });
 
-    void this.hub
-      .getConnection()
-      .then(() => this.hub.joinGameGroup(sessionId))
-      .catch(() => this.error.set('Canlı sunucuya bağlanılamadı.'));
+    if (!environment.demo) {
+      void this.hub
+        .getConnection()
+        .then(() => this.hub.joinGameGroup(sessionId))
+        .catch(() => this.error.set('Canlı sunucuya bağlanılamadı.'));
+    }
 
     void this.api
       .getParticipants(sessionId)

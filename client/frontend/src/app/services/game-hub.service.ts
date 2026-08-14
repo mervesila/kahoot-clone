@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Subject } from 'rxjs';
 import { getToken } from './api.service';
+import { environment } from '../../environments/environment';
 import type {
   AnswerSubmittedEvent,
   GameFinishedEvent,
@@ -13,7 +14,7 @@ import type {
   RoomPlayersUpdatedEvent,
 } from '../models/types';
 
-const HUB_URL = '/hubs/game';
+const HUB_URL = `${environment.apiUrl.replace(/\/$/, '')}/hubs/game`;
 
 @Injectable({ providedIn: 'root' })
 export class GameHubService {

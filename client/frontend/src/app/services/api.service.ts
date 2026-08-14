@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
 import type {
   AuthResult,
   CategoryDto,
@@ -102,9 +103,9 @@ export interface SubmitAnswerRequest {
   responseTimeInSeconds: number;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class ApiService {
-  private readonly base = '';
+  private readonly base = environment.apiUrl.replace(/\/$/, '');
 
   constructor(private http: HttpClient) {}
 

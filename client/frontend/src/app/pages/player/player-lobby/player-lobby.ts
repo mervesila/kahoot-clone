@@ -8,7 +8,9 @@ import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
+import { RelayService } from '../../../services/relay.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
+import { environment } from '../../../../environments/environment';
 import type { GameFinishedEvent } from '../../../models/types';
 
 @Component({
@@ -23,6 +25,7 @@ export class PlayerLobbyComponent {
   private readonly api = inject(ApiService);
   private readonly hub = inject(GameHubService);
   private readonly audio = inject(AudioService);
+  private readonly relay = inject(RelayService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly session = signal<PlayerSession | null>(null);
@@ -35,6 +38,11 @@ export class PlayerLobbyComponent {
     }
     this.session.set(stored);
     this.audio.playMusic('lobby');
+
+    let relayDisconnect: (() => void) | null = null;
+    if (environment.demo) {
+      relayDisconnect = this.relay.connect(stored.pinCode, false);
+    }
 
     const goToGame = (): void => {
       void this.router.navigate(['/player/game']);
@@ -76,6 +84,7 @@ export class PlayerLobbyComponent {
 
     this.destroyRef.onDestroy(() => {
       clearInterval(poll);
+      relayDisconnect?.();
       this.audio.stopMusic();
     });
   }

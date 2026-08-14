@@ -6,4 +6,6 @@ export const environment = {
   production: true,
   apiUrl: runtimeApiUrl ?? 'https://REPLACE-WITH-YOUR-BACKEND-URL',
   demo: true,
+  relayUrl: 'https://ntfy.sh',
+  relayWssUrl: 'wss://ntfy.sh',
 };

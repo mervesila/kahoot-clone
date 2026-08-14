@@ -25,6 +25,7 @@ import type {
   UpdateQuizRequest,
 } from '../models/types';
 import { DEFAULT_AVATAR } from '../data/avatars';
+import { RelayService, type RelayMessage } from './relay.service';
 
 const uid = (prefix: string): string => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -226,9 +227,87 @@ export class MockApiService extends ApiService {
   private static readonly SESSIONS_KEY = 'tki_demo_sessions';
   private static readonly STATES_KEY = 'tki_demo_states';
 
+  private readonly relay = inject(RelayService);
+  private readonly relayDisconnects: Array<() => void> = [];
+
   constructor() {
     super(inject(HttpClient));
     this.loadPersisted();
+    for (const [id, session] of this.sessions) {
+      this.relayDisconnects.push(
+        this.relay.connect(session.pinCode, true, (msg) => this.handleRelayMessage(id, session.pinCode, msg)),
+      );
+    }
+  }
+
+  private handleRelayMessage(sessionId: string, pinCode: string, msg: RelayMessage): void {
+    if (msg.type === 'request') {
+      if (msg.pinCode === pinCode) {
+        const session = this.sessions.get(sessionId);
+        if (session) {
+          this.announce(sessionId, session, true);
+        }
+      }
+      return;
+    }
+    if (msg.type !== 'join' || msg.sessionId !== sessionId) {
+      return;
+    }
+    const state = this.sessionStates.get(sessionId);
+    if (state && state.status === 'Finished') {
+      void this.relay.publish(pinCode, {
+        type: 'reject',
+        sessionId,
+        playerName: msg.playerName,
+        message: 'Bu sınav oturumu sona erdi.',
+      });
+      return;
+    }
+    const participants = this.loadParticipants(sessionId);
+    const normalized = msg.playerName.toLocaleLowerCase('tr-TR');
+    if (participants.some((p) => p.playerName.toLocaleLowerCase('tr-TR') === normalized)) {
+      void this.relay.publish(pinCode, {
+        type: 'reject',
+        sessionId,
+        playerName: msg.playerName,
+        message: 'Bu isim zaten lobide kullanılıyor.',
+      });
+      return;
+    }
+    participants.push({
+      playerId: msg.playerId,
+      playerName: msg.playerName,
+      teamName: msg.teamName,
+      avatarEmoji: msg.avatarEmoji,
+      avatarColor: msg.avatarColor,
+    });
+    this.saveParticipants(sessionId, participants);
+    void this.relay.publish(pinCode, {
+      type: 'accept',
+      sessionId,
+      playerName: msg.playerName,
+    });
+  }
+
+  private readonly lastAnnounceAt = new Map<string, number>();
+
+  private announce(
+    sessionId: string,
+    session: { quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean },
+    force = false,
+  ): void {
+    const now = Date.now();
+    const last = this.lastAnnounceAt.get(sessionId) ?? 0;
+    if (!force && now - last < 15000) {
+      return;
+    }
+    this.lastAnnounceAt.set(sessionId, now);
+    void this.relay.publish(session.pinCode, {
+      type: 'announce',
+      sessionId,
+      quizTitle: session.quizTitle,
+      pinCode: session.pinCode,
+    });
   }
 
   private loadPersisted(): void {
@@ -406,6 +485,10 @@ export class MockApiService extends ApiService {
     this.sessions.set(id, { quizId: data.quizId, quizTitle, pinCode, isTeamMode: data.isTeamMode });
     this.sessionStates.set(id, { id, status: 'Waiting', currentQuestionOrderNo: 0, startedAt: null, finishedAt: null });
     this.persist();
+    this.relayDisconnects.push(
+      this.relay.connect(pinCode, true, (msg) => this.handleRelayMessage(id, pinCode, msg)),
+    );
+    this.announce(id, { quizId: data.quizId, quizTitle, pinCode, isTeamMode: data.isTeamMode });
     return { id, quizId: data.quizId, pinCode, status: 'Waiting' };
   }
 
@@ -416,6 +499,16 @@ export class MockApiService extends ApiService {
       state.currentQuestionOrderNo = 1;
       state.startedAt = new Date().toISOString();
       this.persist();
+    }
+    const session = this.sessions.get(id);
+    if (session) {
+      this.announce(id, session);
+      void this.relay.publish(session.pinCode, {
+        type: 'state',
+        sessionId: id,
+        status: 'InGame',
+        currentQuestionOrderNo: state?.currentQuestionOrderNo ?? 1,
+      });
     }
     return this.getSessionState(id);
   }
@@ -430,6 +523,15 @@ export class MockApiService extends ApiService {
       }
       this.persist();
     }
+    const session = this.sessions.get(id);
+    if (session && state) {
+      void this.relay.publish(session.pinCode, {
+        type: 'state',
+        sessionId: id,
+        status: state.status,
+        currentQuestionOrderNo: state.currentQuestionOrderNo,
+      });
+    }
     return this.getSessionState(id);
   }
 
@@ -440,12 +542,35 @@ export class MockApiService extends ApiService {
       state.finishedAt = new Date().toISOString();
       this.persist();
     }
+    const session = this.sessions.get(id);
+    if (session) {
+      void this.relay.publish(session.pinCode, {
+        type: 'state',
+        sessionId: id,
+        status: 'Finished',
+        currentQuestionOrderNo: state?.currentQuestionOrderNo ?? 0,
+      });
+    }
     return this.getSessionState(id);
   }
 
   override async getSessionState(id: string): Promise<GameSessionStateDto> {
     this.loadStates();
-    return this.sessionStates.get(id) ?? { id, status: 'Waiting', currentQuestionOrderNo: 0, startedAt: null, finishedAt: null };
+    const local = this.sessionStates.get(id);
+    if (local) {
+      return local;
+    }
+    const remote = this.relay.getRemoteState(id);
+    if (remote) {
+      return {
+        id,
+        status: remote.status,
+        currentQuestionOrderNo: remote.currentQuestionOrderNo,
+        startedAt: null,
+        finishedAt: null,
+      };
+    }
+    return { id, status: 'Waiting', currentQuestionOrderNo: 0, startedAt: null, finishedAt: null };
   }
 
   override async getSessionQuestions(sessionId: string): Promise<SessionQuestionDto[]> {
@@ -469,46 +594,76 @@ export class MockApiService extends ApiService {
         break;
       }
     }
-    if (!sessionId || !session) {
-      throw new ApiError(404, 'Bu PIN ile aktif bir sınav bulunamadı.');
-    }
-
-    const state = this.sessionStates.get(sessionId);
-    if (state && state.status === 'Finished') {
-      throw new ApiError(400, 'Bu sınav oturumu sona erdi.');
-    }
 
     const playerName = [data.firstName, data.lastName].filter((v) => v?.trim()).join(' ').trim();
     if (!playerName) {
       throw new ApiError(400, 'Ad Soyad bilgisi zorunludur.');
     }
 
-    const participants = this.loadParticipants(sessionId);
-    const normalized = playerName.toLocaleLowerCase('tr-TR');
-    if (participants.some((p) => p.playerName.toLocaleLowerCase('tr-TR') === normalized)) {
-      throw new ApiError(409, 'Bu isim zaten lobide kullanılıyor.');
+    if (sessionId && session) {
+      const state = this.sessionStates.get(sessionId);
+      if (state && state.status === 'Finished') {
+        throw new ApiError(400, 'Bu sınav oturumu sona erdi.');
+      }
+
+      const participants = this.loadParticipants(sessionId);
+      const normalized = playerName.toLocaleLowerCase('tr-TR');
+      if (participants.some((p) => p.playerName.toLocaleLowerCase('tr-TR') === normalized)) {
+        throw new ApiError(409, 'Bu isim zaten lobide kullanılıyor.');
+      }
+
+      const playerId = uid('oyuncu');
+      participants.push({
+        playerId,
+        playerName,
+        teamName: data.teamName?.trim() || null,
+        avatarEmoji: data.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
+        avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
+      });
+      this.saveParticipants(sessionId, participants);
+
+      return {
+        sessionId,
+        pinCode: session.pinCode,
+        quizTitle: session.quizTitle,
+        playerId,
+        playerName,
+      };
+    }
+
+    // Cihazlar arası katılım: oturum bu cihazda yoksa röle üzerinden
+    // host tarafından duyurulan oturuma katılınır.
+    const announced = this.relay.getAnnounced(data.pinCode);
+    if (!announced) {
+      throw new ApiError(404, 'Bu PIN ile aktif bir sınav bulunamadı.');
     }
 
     const playerId = uid('oyuncu');
-    participants.push({
+    void this.relay.publish(data.pinCode, {
+      type: 'join',
+      sessionId: announced.sessionId,
       playerId,
       playerName,
       teamName: data.teamName?.trim() || null,
       avatarEmoji: data.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
       avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
     });
-    this.saveParticipants(sessionId, participants);
 
     return {
-      sessionId,
-      pinCode: session.pinCode,
-      quizTitle: session.quizTitle,
+      sessionId: announced.sessionId,
+      pinCode: data.pinCode,
+      quizTitle: announced.quizTitle,
       playerId,
       playerName,
+      viaRelay: true,
     };
   }
 
   override async getParticipants(sessionId: string): Promise<SessionParticipantDto[]> {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      this.announce(sessionId, session);
+    }
     return this.loadParticipants(sessionId).map((p) => ({ ...p }));
   }
 

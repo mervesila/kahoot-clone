@@ -11,6 +11,7 @@ export interface JoinGameSessionResult {
   quizTitle: string;
   playerId: string;
   playerName: string;
+  viaRelay?: boolean;
 }
 
 export interface GameSessionStateDto {

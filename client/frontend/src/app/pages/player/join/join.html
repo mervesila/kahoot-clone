@@ -39,6 +39,10 @@
 
       <app-alert [message]="error()" />
 
+      @if (searching()) {
+        <div class="join-searching">Sınav aranıyor… Host bilgisayarından yayın bekleniyor. Lütfen birkaç saniye bekleyin.</div>
+      }
+
       <button
         mat-flat-button
         color="primary"
@@ -46,7 +50,7 @@
         class="join-submit"
         [disabled]="loading()"
       >
-        {{ loading() ? 'Katılıyor…' : 'Katıl' }}
+        {{ loading() ? (searching() ? 'Sınav aranıyor…' : 'Katılıyor…') : 'Katıl' }}
       </button>
 
       <a routerLink="/" class="join-back">Ana Sayfa</a>

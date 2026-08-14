@@ -74,6 +74,29 @@
   font-size: 0.72rem;
 }
 
+.level-section {
+  margin-bottom: 1.5rem;
+}
+
+.level-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.level-section-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.level-section-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .table-card {
   overflow: hidden;
 }

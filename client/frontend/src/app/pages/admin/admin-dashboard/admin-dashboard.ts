@@ -61,6 +61,14 @@ export class AdminDashboardComponent {
 
   protected readonly quizCount = computed(() => this.quizzes()?.length ?? 0);
 
+  protected readonly quizGroups = computed(() => {
+    const list = this.quizzes() ?? [];
+    return [
+      { level: 1, quizzes: list.filter((q) => q.level === 1) },
+      { level: 2, quizzes: list.filter((q) => q.level === 2) },
+    ];
+  });
+
   constructor() {
     void this.loadQuizzes();
     void this.loadCategories();

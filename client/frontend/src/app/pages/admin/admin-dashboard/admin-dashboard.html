@@ -40,9 +40,18 @@
           havuzundan rastgele sorular çekilir.
         </p>
       </div>
-    } @else if (quizzes(); as list) {
-      <div class="glass table-card">
-        <table mat-table [dataSource]="list" class="quiz-table">
+    } @else if (quizzes()) {
+      @for (group of quizGroups(); track group.level) {
+        @if (group.quizzes.length > 0) {
+          <div class="level-section">
+            <div class="level-section-head">
+              <span class="level-section-title">{{ levelLabel(group.level) }}</span>
+              <span class="level-section-sub">
+                {{ group.level === 1 ? 'Tüm çalışanlara açık' : 'Seviye 1\'i geçen çalışanlara açık' }}
+              </span>
+            </div>
+            <div class="glass table-card">
+              <table mat-table [dataSource]="group.quizzes" class="quiz-table">
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Sınav</th>
             <td mat-cell *matCellDef="let quiz">
@@ -111,8 +120,11 @@
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-        </table>
-      </div>
+          </table>
+            </div>
+          </div>
+        }
+      }
     }
   </main>
 

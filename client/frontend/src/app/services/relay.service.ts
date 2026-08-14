@@ -119,65 +119,72 @@ export class RelayService {
    * ntfy HTTP endpoint'inden ({topic}/json?poll=1) son yayınlanan oyun
    * durumu snapshot'ını (WAITING / QUESTION / LEADERBOARD / FINISHED) çeker.
    * Relay/websocket kaçsa bile telefon bu çağrı ile güncel durumu garantili alır.
+   * poll=1 uzun süreli (long-poll) akış üretir; ilk snapshot geldiği anda
+   * parse edilip döndürülür, bağlantının kapanması beklenmez.
    */
   async fetchLatestGameState(pinCode: string): Promise<RelayGameState | null> {
     const topic = this.topicFor(pinCode);
+    let latest: RelayGameState | null = null;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 3000);
     try {
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 5000);
-      try {
-        const response = await fetch(`${HUB_HTTPS}/${topic}/json?poll=1&since=all`, {
-          signal: controller.signal,
-          headers: { Accept: 'application/x-ndjson' },
-        });
-        if (!response.ok || !response.body) {
-          return this.getLatestGameState(pinCode);
-        }
+      const response = await fetch(`${HUB_HTTPS}/${topic}/json?poll=1&since=all`, {
+        signal: controller.signal,
+        headers: { Accept: 'application/x-ndjson' },
+      });
+      if (response.ok && response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        let latest: RelayGameState | null = null;
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) {
+              break;
+            }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+            for (const line of lines) {
+              if (!line.trim()) {
+                continue;
+              }
+              let frame: { event?: string; message?: string };
+              try {
+                frame = JSON.parse(line) as { event?: string; message?: string };
+              } catch {
+                continue;
+              }
+              if (frame.event !== 'message' || typeof frame.message !== 'string') {
+                continue;
+              }
+              let msg: RelayMessage;
+              try {
+                msg = JSON.parse(frame.message) as RelayMessage;
+              } catch {
+                continue;
+              }
+              if (msg?.type === 'game') {
+                latest = msg;
+              }
+            }
+            if (latest) {
+              void reader.cancel();
+              break;
+            }
           }
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-          for (const line of lines) {
-            if (!line.trim()) {
-              continue;
-            }
-            let frame: { event?: string; message?: string };
-            try {
-              frame = JSON.parse(line) as { event?: string; message?: string };
-            } catch {
-              continue;
-            }
-            if (frame.event !== 'message' || typeof frame.message !== 'string') {
-              continue;
-            }
-            let msg: RelayMessage;
-            try {
-              msg = JSON.parse(frame.message) as RelayMessage;
-            } catch {
-              continue;
-            }
-            if (msg?.type === 'game') {
-              latest = msg;
-            }
-          }
+        } catch {
+          // abort / okuma hatası: parse edilmiş snapshot varsa onu kullan
         }
-        if (latest) {
-          this.gameStates.set(topic, latest);
-          return latest;
-        }
-      } finally {
-        clearTimeout(timer);
       }
     } catch {
-      // ağ hatası / abort: sessizce geç, bir sonraki poll dener
+      // ağ hatası: sessizce geç, bir sonraki poll dener
+    } finally {
+      clearTimeout(timer);
+    }
+    if (latest) {
+      this.gameStates.set(topic, latest);
+      return latest;
     }
     return this.getLatestGameState(pinCode);
   }

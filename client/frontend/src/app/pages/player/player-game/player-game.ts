@@ -53,6 +53,7 @@ export class PlayerGameComponent {
 
   readonly session = signal<PlayerSession | null>(null);
   readonly phase = signal<Phase>('connecting');
+  readonly statusGate = signal<RelayGameState['status'] | null>(null);
   readonly question = signal<CurrentQuestionDto | null>(null);
   readonly result = signal<SubmitAnswerResult | null>(null);
   readonly selectedOptionId = signal<string | null>(null);
@@ -284,7 +285,10 @@ export class PlayerGameComponent {
         this.phase.set('answered');
         void this.loadScoreboard(currentSession.sessionId);
       }
-    } else if (!sameQuestion && p !== 'question') {
+    } else if (p === 'question' && sameQuestion) {
+      // Aynı soru zaten açıkken heartbeat/veri gelirse sadece süreyi tazele.
+      this.duration.set(current.timeLimitInSeconds);
+    } else if (!sameQuestion || p === 'connecting' || p === 'waiting') {
       this.applyNewQuestion(current);
     }
   }
@@ -302,6 +306,7 @@ export class PlayerGameComponent {
     if (!state || state.sessionId !== currentSession.sessionId) {
       return;
     }
+    this.statusGate.set(state.status);
     const p = this.phase();
 
     if (state.status === 'FINISHED') {
@@ -314,29 +319,13 @@ export class PlayerGameComponent {
     }
 
     if (state.status === 'QUESTION') {
-      const data = state.question;
-      if (!data) {
-        return;
-      }
-      const question: CurrentQuestionDto = {
-        answered: false,
-        finished: false,
-        questionId: data.id,
-        text: data.text,
-        orderNo: data.orderNo ?? 0,
-        totalQuestions: data.totalQuestions ?? 1,
-        timeLimitInSeconds: data.duration,
-        points: data.points ?? 0,
-        options: data.options,
-        jokersEnabled: data.jokersEnabled ?? false,
-      };
-      this.syncFromServer(question, currentSession);
+      this.forceQuestion(state.question ?? null);
       this.cdr.detectChanges();
       return;
     }
 
     if (state.status === 'LEADERBOARD') {
-      if (p === 'question') {
+      if (p === 'question' || p === 'connecting' || p === 'waiting') {
         this.answered = true;
         this.phase.set('answered');
         void this.loadScoreboard(currentSession.sessionId);
@@ -351,6 +340,44 @@ export class PlayerGameComponent {
         this.cdr.detectChanges();
       }
     }
+  }
+
+  /**
+   * QUESTION snapshot'ından gelen soruyu ekrana ZORLA uygular.
+   * Eksik/null veri gelse bile rendering'i durdurmaz; aynı soru zaten
+   * açıksa (question/answered fazında) mevcut ekran korunur, yeni soru
+   * geldiyse anında A/B/C/D şıklarıyla soru ekranına geçilir.
+   */
+  private forceQuestion(
+    data: RelayGameState['question'] | null,
+  ): void {
+    if (!data) {
+      return;
+    }
+    const current = this.question();
+    const sameQuestion =
+      !!current?.questionId && current.questionId === data.id;
+
+    if (sameQuestion) {
+      if (this.phase() === 'question') {
+        this.duration.set(data.duration);
+      }
+      return;
+    }
+
+    const question: CurrentQuestionDto = {
+      answered: false,
+      finished: false,
+      questionId: data.id,
+      text: data.text ?? '',
+      orderNo: data.orderNo ?? current?.orderNo ?? 0,
+      totalQuestions: data.totalQuestions ?? current?.totalQuestions ?? 1,
+      timeLimitInSeconds: data.duration ?? current?.timeLimitInSeconds ?? 30,
+      points: data.points ?? current?.points ?? 0,
+      options: Array.isArray(data.options) ? data.options : [],
+      jokersEnabled: data.jokersEnabled ?? current?.jokersEnabled ?? true,
+    };
+    this.applyNewQuestion(question);
   }
 
   private async startQuestion(

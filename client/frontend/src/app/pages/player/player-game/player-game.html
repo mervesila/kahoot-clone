@@ -12,7 +12,10 @@
     </header>
 
     <main class="main pg-main">
-      @if (phase() === 'connecting' || phase() === 'waiting') {
+      @if (
+        (phase() === 'connecting' || phase() === 'waiting') &&
+        (statusGate() === null || statusGate() === 'WAITING')
+      ) {
         <div class="pg-waiting">
           <app-spinner label="Soru hazırlanıyor..." />
           <h1 class="pg-waiting-title">Soru Bekleniyor</h1>

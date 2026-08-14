@@ -37,13 +37,36 @@ export interface RelayRequest {
   pinCode: string;
 }
 
+export interface RelayGameOption {
+  optionId: string;
+  text: string;
+}
+
+export interface RelayGameState {
+  sessionId: string;
+  pinCode: string;
+  status: 'QUESTION' | 'GAME_OVER';
+  questionIndex: number;
+  questionData?: {
+    questionId: string;
+    text: string;
+    orderNo: number;
+    totalQuestions: number;
+    timeLimitInSeconds: number;
+    points: number;
+    options: RelayGameOption[];
+    jokersEnabled?: boolean;
+  };
+}
+
 export type RelayMessage =
   | ({ type: 'announce' } & RelayAnnounce)
   | ({ type: 'join' } & RelayJoin)
   | ({ type: 'state' } & RelayState)
   | ({ type: 'reject' } & RelayReject)
   | ({ type: 'accept' } & RelayAccept)
-  | ({ type: 'request' } & RelayRequest);
+  | ({ type: 'request' } & RelayRequest)
+  | ({ type: 'game' } & RelayGameState);
 
 const HUB_HTTPS = environment.relayUrl;
 const HUB_WSS = environment.relayWssUrl;
@@ -69,6 +92,7 @@ export class RelayService {
   private readonly channels = new Map<string, RelayChannel>();
   private readonly announced = new Map<string, RelayAnnounce>();
   private readonly remoteStates = new Map<string, RelayState>();
+  private readonly gameStates = new Map<string, RelayGameState>();
   private readonly rejects: RelayReject[] = [];
   private readonly accepts: RelayAccept[] = [];
 
@@ -82,6 +106,77 @@ export class RelayService {
 
   getRemoteState(sessionId: string): RelayState | null {
     return this.remoteStates.get(sessionId) ?? null;
+  }
+
+  getLatestGameState(pinCode: string): RelayGameState | null {
+    return this.gameStates.get(this.topicFor(pinCode)) ?? null;
+  }
+
+  /**
+   * ntfy HTTP endpoint'inden ({topic}/json?poll=1) son yayınlanan oyun
+   * durumunu (QUESTION / GAME_OVER) çeker. Relay/websocket kaçsa bile
+   * telefon bu çağrı ile güncel durumu garantili alır.
+   */
+  async fetchLatestGameState(pinCode: string): Promise<RelayGameState | null> {
+    const topic = this.topicFor(pinCode);
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 5000);
+      try {
+        const response = await fetch(`${HUB_HTTPS}/${topic}/json?poll=1&since=all`, {
+          signal: controller.signal,
+          headers: { Accept: 'application/x-ndjson' },
+        });
+        if (!response.ok || !response.body) {
+          return this.getLatestGameState(pinCode);
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let latest: RelayGameState | null = null;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.trim()) {
+              continue;
+            }
+            let frame: { event?: string; message?: string };
+            try {
+              frame = JSON.parse(line) as { event?: string; message?: string };
+            } catch {
+              continue;
+            }
+            if (frame.event !== 'message' || typeof frame.message !== 'string') {
+              continue;
+            }
+            let msg: RelayMessage;
+            try {
+              msg = JSON.parse(frame.message) as RelayMessage;
+            } catch {
+              continue;
+            }
+            if (msg?.type === 'game') {
+              latest = msg;
+            }
+          }
+        }
+        if (latest) {
+          this.gameStates.set(topic, latest);
+          return latest;
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch {
+      // ağ hatası / abort: sessizce geç, bir sonraki poll dener
+    }
+    return this.getLatestGameState(pinCode);
   }
 
   takeReject(playerName: string): RelayReject | null {
@@ -235,6 +330,9 @@ export class RelayService {
         break;
       case 'state':
         this.remoteStates.set(msg.sessionId, msg);
+        break;
+      case 'game':
+        this.gameStates.set(msg.pinCode ? this.topicFor(msg.pinCode) : msg.sessionId, msg);
         break;
       case 'reject':
         this.rejects.push(msg);

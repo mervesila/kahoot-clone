@@ -12,6 +12,7 @@ import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiError, ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
+import { RelayService } from '../../../services/relay.service';
 import { SessionService, type HostSession } from '../../../services/session.service';
 import { optionClass, optionLetter, sortOptionsById } from '../../../data/options';
 import { environment } from '../../../../environments/environment';
@@ -63,6 +64,7 @@ export class HostControlComponent {
   private readonly audio = inject(AudioService);
   private readonly hub = inject(GameHubService);
   private readonly sessions = inject(SessionService);
+  private readonly relay = inject(RelayService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly host = signal<HostSession | null>(null);
@@ -198,6 +200,7 @@ export class HostControlComponent {
       .subscribe((event: GameFinishedEvent) => {
         if (event.sessionId === sessionId) {
           this.status.set('Finished');
+          this.publishGameState('GAME_OVER');
           void this.loadScoreboard(sessionId);
         }
       });
@@ -264,6 +267,42 @@ export class HostControlComponent {
     if (question) {
       this.timeLimit.set(question.timeLimitInSeconds);
     }
+    this.publishGameState('QUESTION');
+  }
+
+  /**
+   * Oyun durumunu (soru başladı / sınav bitti) ntfy röle kanalına yayınlar.
+   * Telefon websocket'i kaçırsa bile HTTP polling ile bu durumu garantili alır.
+   */
+  private publishGameState(status: 'QUESTION' | 'GAME_OVER'): void {
+    const host = this.host();
+    if (!host) {
+      return;
+    }
+    const question = this.currentQuestion();
+    void this.relay.publish(host.pinCode, {
+      type: 'game',
+      sessionId: host.sessionId,
+      pinCode: host.pinCode,
+      status,
+      questionIndex: Math.max(0, this.questionOrderNo() - 1),
+      questionData:
+        status === 'QUESTION' && question
+          ? {
+              questionId: question.questionId,
+              text: question.text,
+              orderNo: question.orderNo,
+              totalQuestions: this.sessionQuestions().length,
+              timeLimitInSeconds: question.timeLimitInSeconds,
+              points: question.points,
+              options: sortOptionsById(question.options).map((o) => ({
+                optionId: o.optionId,
+                text: o.text,
+              })),
+              jokersEnabled: true,
+            }
+          : undefined,
+    });
   }
 
   async handleFinish(): Promise<void> {
@@ -276,6 +315,7 @@ export class HostControlComponent {
     try {
       await this.api.finishSession(host.sessionId);
       this.status.set('Finished');
+      this.publishGameState('GAME_OVER');
       await this.loadScoreboard(host.sessionId);
     } catch (err) {
       this.error.set(err instanceof ApiError ? err.message : 'Oyun bitirilemedi.');

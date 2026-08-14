@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, ChangeDetectorRef, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +11,7 @@ import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
+import { RelayService, type RelayGameState } from '../../../services/relay.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
 import { sortOptionsById } from '../../../data/options';
 import type {
@@ -46,6 +47,8 @@ export class PlayerGameComponent {
   private readonly audio = inject(AudioService);
   private readonly hub = inject(GameHubService);
   private readonly sessions = inject(SessionService);
+  private readonly relay = inject(RelayService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly session = signal<PlayerSession | null>(null);
@@ -126,6 +129,21 @@ export class PlayerGameComponent {
     }, 1500);
     this.destroyRef.onDestroy(() => clearInterval(pollTimer));
 
+    let relayFetching = false;
+    const relayPollTimer = setInterval(() => {
+      if (relayFetching) {
+        return;
+      }
+      relayFetching = true;
+      void this.relay
+        .fetchLatestGameState(currentSession.pinCode)
+        .then((state) => this.applyRelayGameState(state, currentSession))
+        .finally(() => {
+          relayFetching = false;
+        });
+    }, 1000);
+    this.destroyRef.onDestroy(() => clearInterval(relayPollTimer));
+
     this.hub.questionStarted$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event: QuestionStartedEvent) => {
@@ -186,6 +204,7 @@ export class PlayerGameComponent {
     try {
       const current = await this.api.getQuestion(currentSession.sessionId, currentSession.playerId);
       this.syncFromServer(current, currentSession);
+      this.cdr.detectChanges();
     } catch {
       if (this.phase() === 'connecting') {
         this.phase.set('waiting');
@@ -261,6 +280,46 @@ export class PlayerGameComponent {
     } else if (!sameQuestion && p !== 'question') {
       this.applyNewQuestion(current);
     }
+  }
+
+  /**
+   * Host'un ntfy kanalına yayınladığı oyun durumunu (QUESTION / GAME_OVER)
+   * uygular. HTTP polling'den gelir; websocket kaçsa bile telefon buradan
+   * garantili olarak güncel ekrana geçer.
+   */
+  private applyRelayGameState(
+    state: RelayGameState | null,
+    currentSession: PlayerSession,
+  ): void {
+    if (!state || state.sessionId !== currentSession.sessionId) {
+      return;
+    }
+    if (state.status === 'GAME_OVER') {
+      if (this.phase() !== 'finished') {
+        this.phase.set('finished');
+        void this.loadScoreboard(currentSession.sessionId);
+      }
+      this.cdr.detectChanges();
+      return;
+    }
+    const data = state.questionData;
+    if (!data) {
+      return;
+    }
+    const question: CurrentQuestionDto = {
+      answered: false,
+      finished: false,
+      questionId: data.questionId,
+      text: data.text,
+      orderNo: data.orderNo,
+      totalQuestions: data.totalQuestions,
+      timeLimitInSeconds: data.timeLimitInSeconds,
+      points: data.points,
+      options: data.options,
+      jokersEnabled: data.jokersEnabled ?? false,
+    };
+    this.syncFromServer(question, currentSession);
+    this.cdr.detectChanges();
   }
 
   private async startQuestion(

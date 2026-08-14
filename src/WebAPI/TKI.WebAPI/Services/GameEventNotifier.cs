@@ -23,6 +23,9 @@ public class GameEventNotifier : IGameEventNotifier
     public Task QuestionStartedAsync(QuestionStartedEvent evt, CancellationToken cancellationToken = default)
         => SendToGroupAsync(evt.SessionId, "QuestionStarted", evt, cancellationToken);
 
+    public Task GameStateChangedAsync(QuestionStartedEvent evt, CancellationToken cancellationToken = default)
+        => SendToGroupAsync(evt.SessionId, "GameStateChanged", evt, cancellationToken);
+
     public Task AnswerSubmittedAsync(AnswerSubmittedEvent evt, CancellationToken cancellationToken = default)
         => SendToGroupAsync(evt.SessionId, "AnswerSubmitted", evt, cancellationToken);
 

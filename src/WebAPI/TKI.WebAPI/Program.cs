@@ -88,6 +88,7 @@ builder.Services.AddScoped<IGameEventNotifier, GameEventNotifier>();
 builder.Services.AddScoped<IReportExportService, ReportExportService>();
 
 builder.Services.AddSingleton<QuestionPoolService>();
+builder.Services.AddHostedService<GameHeartbeatService>();
 
 var databaseUrl = builder.Configuration["DATABASE_URL"];
 

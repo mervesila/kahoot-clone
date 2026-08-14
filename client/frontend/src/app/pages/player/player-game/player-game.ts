@@ -123,7 +123,7 @@ export class PlayerGameComponent {
         return;
       }
       void this.restoreFromServer(currentSession);
-    }, 4000);
+    }, 1500);
     this.destroyRef.onDestroy(() => clearInterval(pollTimer));
 
     this.hub.questionStarted$
@@ -131,6 +131,18 @@ export class PlayerGameComponent {
       .subscribe((event: QuestionStartedEvent) => {
         if (event.sessionId === currentSession.sessionId) {
           void this.startQuestion(event, currentSession);
+        }
+      });
+
+    this.hub.gameStateChanged$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event: QuestionStartedEvent) => {
+        if (event.sessionId !== currentSession.sessionId) {
+          return;
+        }
+        const state = this.eventToQuestion(event);
+        if (state) {
+          this.syncFromServer(state, currentSession);
         }
       });
 
@@ -173,40 +185,7 @@ export class PlayerGameComponent {
     }
     try {
       const current = await this.api.getQuestion(currentSession.sessionId, currentSession.playerId);
-      if (current.finished) {
-        this.phase.set('finished');
-        await this.loadScoreboard(currentSession.sessionId);
-        return;
-      }
-      this.usedJokers.set(current.usedJokers ?? []);
-      if (!current.questionId) {
-        return;
-      }
-      const sameQuestion = this.question()?.questionId === current.questionId;
-      if (!sameQuestion) {
-        this.answered = current.answered;
-        this.question.set(current);
-        this.duration.set(current.timeLimitInSeconds);
-        this.questionStartedAt.set(Date.now());
-      }
-      if (current.answered) {
-        if (p !== 'answered') {
-          this.result.set({
-            answerId: '',
-            isCorrect: current.isCorrect ?? false,
-            scoreEarned: current.scoreEarned ?? 0,
-            correctOptionId: current.correctOptionId ?? '',
-            responseTimeInSeconds: 0,
-            usedJokers: [],
-          });
-          this.phase.set('answered');
-        }
-      } else if (!sameQuestion) {
-        this.phase.set('question');
-      }
-      if (!sameQuestion) {
-        await this.loadScoreboard(currentSession.sessionId);
-      }
+      this.syncFromServer(current, currentSession);
     } catch {
       if (this.phase() === 'connecting') {
         this.phase.set('waiting');
@@ -214,59 +193,90 @@ export class PlayerGameComponent {
     }
   }
 
+  private eventToQuestion(event: QuestionStartedEvent): CurrentQuestionDto | null {
+    if (!event.questionId || !event.text || !event.options) {
+      return null;
+    }
+    return {
+      answered: false,
+      finished: false,
+      questionId: event.questionId,
+      text: event.text,
+      orderNo: event.orderNo,
+      totalQuestions: event.totalQuestions,
+      timeLimitInSeconds: event.timeLimitInSeconds,
+      points: event.points,
+      options: event.options,
+      jokersEnabled: event.jokersEnabled,
+    };
+  }
+
+  private applyNewQuestion(question: CurrentQuestionDto): void {
+    this.answered = question.answered;
+    this.result.set(null);
+    this.selectedOptionId.set(null);
+    this.timedOut.set(false);
+    if (question.usedJokers) {
+      this.usedJokers.set(question.usedJokers);
+    }
+    this.question.set(question);
+    this.duration.set(question.timeLimitInSeconds);
+    this.questionStartedAt.set(Date.now());
+    this.phase.set(question.answered ? 'answered' : 'question');
+  }
+
+  private syncFromServer(current: CurrentQuestionDto, currentSession: PlayerSession): void {
+    const p = this.phase();
+    if (current.finished) {
+      if (p !== 'finished') {
+        this.phase.set('finished');
+        void this.loadScoreboard(currentSession.sessionId);
+      }
+      return;
+    }
+    if (!current.questionId) {
+      return;
+    }
+    if (current.usedJokers) {
+      this.usedJokers.set(current.usedJokers);
+    }
+    const sameQuestion = this.question()?.questionId === current.questionId;
+
+    if (current.answered) {
+      if (p !== 'answered') {
+        this.answered = true;
+        this.question.set(current);
+        this.duration.set(current.timeLimitInSeconds);
+        this.result.set({
+          answerId: '',
+          isCorrect: current.isCorrect ?? false,
+          scoreEarned: current.scoreEarned ?? 0,
+          correctOptionId: current.correctOptionId ?? '',
+          responseTimeInSeconds: 0,
+          usedJokers: current.usedJokers ?? [],
+        });
+        this.phase.set('answered');
+        void this.loadScoreboard(currentSession.sessionId);
+      }
+    } else if (!sameQuestion && p !== 'question') {
+      this.applyNewQuestion(current);
+    }
+  }
+
   private async startQuestion(
     event: QuestionStartedEvent,
     currentSession: PlayerSession,
   ): Promise<void> {
-    this.answered = false;
-    this.result.set(null);
-    this.selectedOptionId.set(null);
-    this.timedOut.set(false);
-    this.duration.set(event.timeLimitInSeconds);
-    this.questionStartedAt.set(Date.now());
-
-    if (event.questionId && event.text && event.options) {
-      this.question.set({
-        answered: false,
-        finished: false,
-        questionId: event.questionId,
-        text: event.text,
-        orderNo: event.orderNo,
-        totalQuestions: event.totalQuestions,
-        timeLimitInSeconds: event.timeLimitInSeconds,
-        points: event.points,
-        options: event.options,
-        jokersEnabled: event.jokersEnabled,
-      });
-      this.phase.set('question');
+    const optimistic = this.eventToQuestion(event);
+    if (optimistic) {
+      this.applyNewQuestion(optimistic);
     }
 
     try {
       const fetched = await this.api.getQuestion(currentSession.sessionId, currentSession.playerId);
-      if (fetched.finished) {
-        this.phase.set('finished');
-        await this.loadScoreboard(currentSession.sessionId);
-        return;
-      }
-      this.question.set(fetched);
-      this.usedJokers.set(fetched.usedJokers ?? []);
-      if (fetched.answered) {
-        this.answered = true;
-        this.phase.set('answered');
-        this.result.set({
-          answerId: '',
-          isCorrect: fetched.isCorrect ?? false,
-          scoreEarned: fetched.scoreEarned ?? 0,
-          correctOptionId: fetched.correctOptionId ?? '',
-          responseTimeInSeconds: 0,
-          usedJokers: [],
-        });
-      } else if (this.phase() !== 'question') {
-        this.phase.set('question');
-      }
-      await this.loadScoreboard(currentSession.sessionId);
+      this.syncFromServer(fetched, currentSession);
     } catch {
-      // Soru verisi alınamazsa sessizce geç; event verisiyle ekran zaten güncellendi.
+      // Soru verisi alınamazsa sessizce geç; event/heartbeat verisiyle ekran zaten güncellendi.
     }
   }
 

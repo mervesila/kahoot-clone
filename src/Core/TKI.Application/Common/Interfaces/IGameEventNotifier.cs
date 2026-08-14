@@ -36,6 +36,7 @@ public interface IGameEventNotifier
     Task PlayerJoinedAsync(PlayerJoinedEvent evt, CancellationToken cancellationToken = default);
     Task GameStartedAsync(GameStartedEvent evt, CancellationToken cancellationToken = default);
     Task QuestionStartedAsync(QuestionStartedEvent evt, CancellationToken cancellationToken = default);
+    Task GameStateChangedAsync(QuestionStartedEvent evt, CancellationToken cancellationToken = default);
     Task AnswerSubmittedAsync(AnswerSubmittedEvent evt, CancellationToken cancellationToken = default);
     Task JokerUsedAsync(JokerUsedEvent evt, CancellationToken cancellationToken = default);
     Task GameFinishedAsync(GameFinishedEvent evt, CancellationToken cancellationToken = default);

@@ -6,6 +6,32 @@ namespace TKI.Application.Features.GameSessions.Commands;
 
 public static class QuestionStartedEventBuilder
 {
+    public static async Task<QuestionStartedEvent> BuildByIdAsync(
+        IApplicationDbContext db,
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        var session = await db.GameSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
+
+        if (session is null)
+        {
+            return new QuestionStartedEvent(
+                sessionId,
+                0,
+                0,
+                30,
+                0,
+                Guid.Empty,
+                string.Empty,
+                [],
+                true);
+        }
+
+        return await BuildAsync(db, session, cancellationToken);
+    }
+
     public static async Task<QuestionStartedEvent> BuildAsync(
         IApplicationDbContext db,
         GameSession session,

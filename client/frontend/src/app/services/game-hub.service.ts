@@ -33,6 +33,7 @@ export class GameHubService {
   readonly roomPlayersUpdated$ = new Subject<RoomPlayersUpdatedEvent>();
   readonly gameStarted$ = new Subject<GameStartedEvent>();
   readonly questionStarted$ = new Subject<QuestionStartedEvent>();
+  readonly gameStateChanged$ = new Subject<QuestionStartedEvent>();
   readonly answerSubmitted$ = new Subject<AnswerSubmittedEvent>();
   readonly jokerUsed$ = new Subject<JokerUsedEvent>();
   readonly gameFinished$ = new Subject<GameFinishedEvent>();
@@ -100,6 +101,9 @@ export class GameHubService {
     connection.on('GameStarted', (event: GameStartedEvent) => this.gameStarted$.next(event));
     connection.on('QuestionStarted', (event: QuestionStartedEvent) =>
       this.questionStarted$.next(event),
+    );
+    connection.on('GameStateChanged', (event: QuestionStartedEvent) =>
+      this.gameStateChanged$.next(event),
     );
     connection.on('AnswerSubmitted', (event: AnswerSubmittedEvent) =>
       this.answerSubmitted$.next(event),

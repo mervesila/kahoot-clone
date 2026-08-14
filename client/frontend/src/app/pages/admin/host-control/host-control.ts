@@ -237,7 +237,16 @@ export class HostControlComponent {
       } else {
         const state = await this.api.nextQuestion(host.sessionId);
         this.status.set(state.status);
-        this.activateQuestion(state.currentQuestionOrderNo);
+        if (state.currentQuestionOrderNo > this.questionOrderNo()) {
+          this.activateQuestion(state.currentQuestionOrderNo);
+        } else {
+          const next = this.sessionQuestions()
+            .filter((q) => q.orderNo > this.questionOrderNo())
+            .sort((a, b) => a.orderNo - b.orderNo)[0];
+          if (next) {
+            this.activateQuestion(next.orderNo);
+          }
+        }
       }
     } catch (err) {
       this.error.set(err instanceof ApiError ? err.message : 'İşlem başarısız.');

@@ -72,6 +72,7 @@ export class HostControlComponent {
   readonly timeLimit = signal(30);
   readonly liveAnswers = signal<LiveAnswer[]>([]);
   readonly jokers = signal<string[]>([]);
+  readonly answerRevealed = signal(false);
   readonly scoreboard = signal<ScoreboardDto | null>(null);
   readonly showScoreboard = signal(false);
   readonly error = signal('');
@@ -163,10 +164,8 @@ export class HostControlComponent {
           return;
         }
         this.status.set('InGame');
-        this.questionOrderNo.set(event.orderNo);
+        this.activateQuestion(event.orderNo);
         this.timeLimit.set(event.timeLimitInSeconds);
-        this.liveAnswers.set([]);
-        this.jokers.set([]);
       });
 
     this.hub.answerSubmitted$
@@ -231,15 +230,30 @@ export class HostControlComponent {
       if (this.status() === 'Waiting') {
         const state = await this.api.startSession(host.sessionId);
         this.status.set('InGame');
-        this.questionOrderNo.set(state.currentQuestionOrderNo);
+        this.activateQuestion(state.currentQuestionOrderNo);
         this.message.set('Oyun başladı!');
+      } else if (this.isLastQuestion()) {
+        await this.handleFinish();
       } else {
-        await this.api.nextQuestion(host.sessionId);
+        const state = await this.api.nextQuestion(host.sessionId);
+        this.status.set(state.status);
+        this.activateQuestion(state.currentQuestionOrderNo);
       }
     } catch (err) {
       this.error.set(err instanceof ApiError ? err.message : 'İşlem başarısız.');
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  private activateQuestion(orderNo: number): void {
+    this.answerRevealed.set(false);
+    this.questionOrderNo.set(orderNo);
+    this.liveAnswers.set([]);
+    this.jokers.set([]);
+    const question = this.sessionQuestions().find((q) => q.orderNo === orderNo);
+    if (question) {
+      this.timeLimit.set(question.timeLimitInSeconds);
     }
   }
 
@@ -273,6 +287,7 @@ export class HostControlComponent {
   }
 
   onCountdownExpired(): void {
+    this.answerRevealed.set(true);
     this.audio.stopMusic();
   }
 

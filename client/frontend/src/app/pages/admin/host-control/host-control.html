@@ -21,7 +21,7 @@
             [disabled]="busy() || status() === 'Finished'"
             (click)="handleAdvance()"
           >
-            {{ status() === 'Waiting' ? 'Sınavı Başlat' : 'Sonraki Soru' }}
+            {{ status() === 'Waiting' ? 'Sınavı Başlat' : isLastQuestion() ? 'Sınavı Bitir' : 'Sonraki Soru' }}
           </button>
           <button
             mat-stroked-button
@@ -61,7 +61,7 @@
             @if (currentQuestion(); as question) {
               <div class="flex-between control-question-head">
                 <span class="control-muted"
-                  >Soru {{ question.orderNo + 1 }}/{{ sessionQuestions().length }}</span
+                  >Soru {{ question.orderNo }}/{{ sessionQuestions().length }}</span
                 >
                 <span class="control-muted">
                   @if (question.categoryName) {
@@ -97,17 +97,21 @@
                       letterFor(index)
                     }}</span>
                     <span class="host-option-text">{{ option.text }}</span>
-                    @if (option.isCorrect) {
+                    @if (option.isCorrect && answerRevealed()) {
                       <span class="host-option-correct">Doğru</span>
                     }
                   </div>
                 }
               </div>
 
-              <div class="control-correct">
-                <p class="control-correct-label">Doğru Cevap</p>
-                <p class="control-correct-text">{{ correctOption()?.text ?? 'Bilinmiyor' }}</p>
-              </div>
+              @if (answerRevealed()) {
+                <div class="control-correct">
+                  <p class="control-correct-label">Doğru Cevap</p>
+                  <p class="control-correct-text">{{ correctOption()?.text ?? 'Bilinmiyor' }}</p>
+                </div>
+              } @else {
+                <p class="control-muted">Süre dolduğunda doğru cevap gösterilecek.</p>
+              }
 
               @if (isLastQuestion()) {
                 <p class="text-gold">Bu son soruydu — “Sınavı Bitir” ile skorları açıklayın.</p>

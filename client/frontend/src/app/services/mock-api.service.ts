@@ -701,8 +701,12 @@ export class MockApiService extends ApiService {
 
   override async nextQuestion(id: string): Promise<GameSessionStateDto> {
     const state = this.sessionStates.get(id);
-    if (state && state.status === 'InGame') {
-      state.currentQuestionOrderNo += 1;
+    const questions = this.sessionQuestionsMap.get(id);
+    if (state && state.status === 'InGame' && questions && questions.length > 0) {
+      const maxOrderNo = questions[questions.length - 1].orderNo;
+      if (state.currentQuestionOrderNo < maxOrderNo) {
+        state.currentQuestionOrderNo += 1;
+      }
     }
     return this.getSessionState(id);
   }

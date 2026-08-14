@@ -144,6 +144,13 @@ export class PlayerGameComponent {
     }, 1000);
     this.destroyRef.onDestroy(() => clearInterval(relayPollTimer));
 
+    const relayDisconnect = this.relay.connect(currentSession.pinCode, false, (msg) => {
+      if (msg.type === 'game') {
+        this.applyRelayGameState(msg, currentSession);
+      }
+    });
+    this.destroyRef.onDestroy(() => relayDisconnect());
+
     this.hub.questionStarted$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event: QuestionStartedEvent) => {
@@ -283,9 +290,10 @@ export class PlayerGameComponent {
   }
 
   /**
-   * Host'un ntfy kanalına yayınladığı oyun durumunu (QUESTION / GAME_OVER)
-   * uygular. HTTP polling'den gelir; websocket kaçsa bile telefon buradan
-   * garantili olarak güncel ekrana geçer.
+   * Host'un ntfy kanalına sürekli yayınladığı oyun durumu snapshot'ını
+   * (WAITING / QUESTION / LEADERBOARD / FINISHED) uygular. Hem canlı
+   * websocket hem HTTP polling (json?poll=1) buraya gelir; websocket kaçsa
+   * bile telefon güncel duruma garantili geçer.
    */
   private applyRelayGameState(
     state: RelayGameState | null,
@@ -294,32 +302,55 @@ export class PlayerGameComponent {
     if (!state || state.sessionId !== currentSession.sessionId) {
       return;
     }
-    if (state.status === 'GAME_OVER') {
-      if (this.phase() !== 'finished') {
+    const p = this.phase();
+
+    if (state.status === 'FINISHED') {
+      if (p !== 'finished') {
         this.phase.set('finished');
         void this.loadScoreboard(currentSession.sessionId);
       }
       this.cdr.detectChanges();
       return;
     }
-    const data = state.questionData;
-    if (!data) {
+
+    if (state.status === 'QUESTION') {
+      const data = state.question;
+      if (!data) {
+        return;
+      }
+      const question: CurrentQuestionDto = {
+        answered: false,
+        finished: false,
+        questionId: data.id,
+        text: data.text,
+        orderNo: data.orderNo ?? 0,
+        totalQuestions: data.totalQuestions ?? 1,
+        timeLimitInSeconds: data.duration,
+        points: data.points ?? 0,
+        options: data.options,
+        jokersEnabled: data.jokersEnabled ?? false,
+      };
+      this.syncFromServer(question, currentSession);
+      this.cdr.detectChanges();
       return;
     }
-    const question: CurrentQuestionDto = {
-      answered: false,
-      finished: false,
-      questionId: data.questionId,
-      text: data.text,
-      orderNo: data.orderNo,
-      totalQuestions: data.totalQuestions,
-      timeLimitInSeconds: data.timeLimitInSeconds,
-      points: data.points,
-      options: data.options,
-      jokersEnabled: data.jokersEnabled ?? false,
-    };
-    this.syncFromServer(question, currentSession);
-    this.cdr.detectChanges();
+
+    if (state.status === 'LEADERBOARD') {
+      if (p === 'question') {
+        this.answered = true;
+        this.phase.set('answered');
+        void this.loadScoreboard(currentSession.sessionId);
+        this.cdr.detectChanges();
+      }
+      return;
+    }
+
+    if (state.status === 'WAITING') {
+      if (p === 'connecting' || (p === 'question' && !this.question())) {
+        this.phase.set('waiting');
+        this.cdr.detectChanges();
+      }
+    }
   }
 
   private async startQuestion(

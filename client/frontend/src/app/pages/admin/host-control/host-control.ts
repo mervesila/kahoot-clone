@@ -12,7 +12,7 @@ import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiError, ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
-import { RelayService } from '../../../services/relay.service';
+import { RelayService, type RelayGameStatus, type RelayGameState } from '../../../services/relay.service';
 import { SessionService, type HostSession } from '../../../services/session.service';
 import { optionClass, optionLetter, sortOptionsById } from '../../../data/options';
 import { environment } from '../../../../environments/environment';
@@ -80,6 +80,7 @@ export class HostControlComponent {
   readonly error = signal('');
   readonly message = signal('');
   readonly busy = signal(false);
+  private snapshotTimer: number | null = null;
 
   protected readonly currentQuestion = computed(() => {
     const questions = this.sessionQuestions();
@@ -116,6 +117,14 @@ export class HostControlComponent {
       return;
     }
     this.host.set(stored);
+
+    this.snapshotTimer = window.setInterval(() => this.broadcastSnapshot(), 1000);
+    this.destroyRef.onDestroy(() => {
+      if (this.snapshotTimer !== null) {
+        clearInterval(this.snapshotTimer);
+        this.snapshotTimer = null;
+      }
+    });
 
     void this.api
       .getSessionQuestions(stored.sessionId)
@@ -200,7 +209,7 @@ export class HostControlComponent {
       .subscribe((event: GameFinishedEvent) => {
         if (event.sessionId === sessionId) {
           this.status.set('Finished');
-          this.publishGameState('GAME_OVER');
+          this.broadcastSnapshot();
           void this.loadScoreboard(sessionId);
         }
       });
@@ -267,42 +276,66 @@ export class HostControlComponent {
     if (question) {
       this.timeLimit.set(question.timeLimitInSeconds);
     }
-    this.publishGameState('QUESTION');
+    this.broadcastSnapshot();
   }
 
   /**
-   * Oyun durumunu (soru başladı / sınav bitti) ntfy röle kanalına yayınlar.
-   * Telefon websocket'i kaçırsa bile HTTP polling ile bu durumu garantili alır.
+   * Oyun durumunun tam özetini (Snapshot) ntfy röle kanalına yayınlar.
+   * Hem her durum değişiminde anında hem de 1 sn'de bir sürekli olarak
+   * çalışır; telefon websocket'i kaçırsa bile HTTP polling ile bu
+   * snapshot'ı garantili alır.
    */
-  private publishGameState(status: 'QUESTION' | 'GAME_OVER'): void {
+  private buildSnapshot(): { type: 'game' } & RelayGameState {
+    const host = this.host();
+    const st = this.status();
+    let status: RelayGameStatus = 'WAITING';
+    if (st === 'Finished') {
+      status = 'FINISHED';
+    } else if (st === 'InGame') {
+      const question = this.currentQuestion();
+      if (!question) {
+        status = 'WAITING';
+      } else if (this.answerRevealed()) {
+        status = 'LEADERBOARD';
+      } else {
+        status = 'QUESTION';
+      }
+    }
+    const question = this.currentQuestion();
+    return {
+      type: 'game',
+      sessionId: host?.sessionId ?? '',
+      pin: host?.pinCode ?? '',
+      status,
+      currentQuestionIndex: Math.max(0, this.questionOrderNo() - 1),
+      question: question
+        ? {
+            id: question.questionId,
+            text: question.text,
+            options: sortOptionsById(question.options).map((o) => ({
+              optionId: o.optionId,
+              text: o.text,
+            })),
+            duration: question.timeLimitInSeconds,
+            orderNo: question.orderNo,
+            totalQuestions: this.sessionQuestions().length,
+            points: question.points,
+            jokersEnabled: true,
+          }
+        : undefined,
+      serverTime: Date.now(),
+    };
+  }
+
+  private broadcastSnapshot(): void {
     const host = this.host();
     if (!host) {
       return;
     }
-    const question = this.currentQuestion();
-    void this.relay.publish(host.pinCode, {
-      type: 'game',
-      sessionId: host.sessionId,
-      pinCode: host.pinCode,
-      status,
-      questionIndex: Math.max(0, this.questionOrderNo() - 1),
-      questionData:
-        status === 'QUESTION' && question
-          ? {
-              questionId: question.questionId,
-              text: question.text,
-              orderNo: question.orderNo,
-              totalQuestions: this.sessionQuestions().length,
-              timeLimitInSeconds: question.timeLimitInSeconds,
-              points: question.points,
-              options: sortOptionsById(question.options).map((o) => ({
-                optionId: o.optionId,
-                text: o.text,
-              })),
-              jokersEnabled: true,
-            }
-          : undefined,
-    });
+    if (this.status() === 'Waiting') {
+      return;
+    }
+    void this.relay.publish(host.pinCode, this.buildSnapshot());
   }
 
   async handleFinish(): Promise<void> {
@@ -315,7 +348,7 @@ export class HostControlComponent {
     try {
       await this.api.finishSession(host.sessionId);
       this.status.set('Finished');
-      this.publishGameState('GAME_OVER');
+      this.broadcastSnapshot();
       await this.loadScoreboard(host.sessionId);
     } catch (err) {
       this.error.set(err instanceof ApiError ? err.message : 'Oyun bitirilemedi.');
@@ -338,6 +371,7 @@ export class HostControlComponent {
   onCountdownExpired(): void {
     this.answerRevealed.set(true);
     this.audio.stopMusic();
+    this.broadcastSnapshot();
   }
 
   letterFor(index: number): string {

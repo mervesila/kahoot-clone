@@ -42,21 +42,24 @@ export interface RelayGameOption {
   text: string;
 }
 
+export type RelayGameStatus = 'WAITING' | 'QUESTION' | 'LEADERBOARD' | 'FINISHED';
+
 export interface RelayGameState {
   sessionId: string;
-  pinCode: string;
-  status: 'QUESTION' | 'GAME_OVER';
-  questionIndex: number;
-  questionData?: {
-    questionId: string;
+  pin: string;
+  status: RelayGameStatus;
+  currentQuestionIndex: number;
+  question?: {
+    id: string;
     text: string;
-    orderNo: number;
-    totalQuestions: number;
-    timeLimitInSeconds: number;
-    points: number;
     options: RelayGameOption[];
+    duration: number;
+    orderNo?: number;
+    totalQuestions?: number;
+    points?: number;
     jokersEnabled?: boolean;
   };
+  serverTime: number;
 }
 
 export type RelayMessage =
@@ -114,8 +117,8 @@ export class RelayService {
 
   /**
    * ntfy HTTP endpoint'inden ({topic}/json?poll=1) son yayınlanan oyun
-   * durumunu (QUESTION / GAME_OVER) çeker. Relay/websocket kaçsa bile
-   * telefon bu çağrı ile güncel durumu garantili alır.
+   * durumu snapshot'ını (WAITING / QUESTION / LEADERBOARD / FINISHED) çeker.
+   * Relay/websocket kaçsa bile telefon bu çağrı ile güncel durumu garantili alır.
    */
   async fetchLatestGameState(pinCode: string): Promise<RelayGameState | null> {
     const topic = this.topicFor(pinCode);
@@ -332,7 +335,7 @@ export class RelayService {
         this.remoteStates.set(msg.sessionId, msg);
         break;
       case 'game':
-        this.gameStates.set(msg.pinCode ? this.topicFor(msg.pinCode) : msg.sessionId, msg);
+        this.gameStates.set(msg.pin ? this.topicFor(msg.pin) : msg.sessionId, msg);
         break;
       case 'reject':
         this.rejects.push(msg);

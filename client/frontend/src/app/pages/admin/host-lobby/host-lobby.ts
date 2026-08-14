@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -55,6 +55,20 @@ export class HostLobbyComponent {
   readonly players = signal<LobbyPlayer[]>([]);
   readonly error = signal('');
   readonly starting = signal(false);
+
+  readonly qrJoinUrl = computed(() => {
+    const host = this.host();
+    return host ? `${window.location.origin}/join?pin=${host.pinCode}` : '';
+  });
+
+  readonly qrImageUrl = computed(() => {
+    const host = this.host();
+    if (!host) {
+      return '';
+    }
+    const target = encodeURIComponent(this.qrJoinUrl());
+    return `https://api.quickchart.io/qr?text=${target}&size=240&margin=2`;
+  });
 
   constructor() {
     const sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
@@ -115,6 +129,18 @@ export class HostLobbyComponent {
         this.players.set(list.map((p) => this.toLobbyPlayer(p)));
       })
       .catch(() => undefined);
+
+    if (environment.demo) {
+      const poll = setInterval(() => {
+        void this.api
+          .getParticipants(sessionId)
+          .then((list) => {
+            this.players.set(list.map((p) => this.toLobbyPlayer(p)));
+          })
+          .catch(() => undefined);
+      }, 2000);
+      this.destroyRef.onDestroy(() => clearInterval(poll));
+    }
 
     this.destroyRef.onDestroy(() => this.audio.stopMusic());
   }

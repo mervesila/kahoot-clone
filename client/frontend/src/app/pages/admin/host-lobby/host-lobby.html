@@ -14,6 +14,21 @@
           <span class="pin-label">Sınav PIN'i</span>
           <div class="pin-number">{{ host.pinCode }}</div>
           <p class="pin-hint">Katılımcılar bu kodu Sınav Portalı'na girerek katılabilir.</p>
+
+          @if (qrImageUrl()) {
+            <div class="qr-box">
+              <img
+                class="qr-code"
+                [src]="qrImageUrl()"
+                alt="Sınava katılmak için QR kod"
+                width="180"
+                height="180"
+              />
+              <p class="qr-hint">Telefonla katılmak için QR kodu okutun veya adresi girin:</p>
+              <code class="qr-url">{{ qrJoinUrl() }}</code>
+            </div>
+          }
+
           <p class="quiz-title-display">{{ host.quizTitle }}</p>
         </div>
 

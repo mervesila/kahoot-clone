@@ -1,6 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { ApiService, type LoginRequest, type RegisterRequest } from './api.service';
+import {
+  ApiError,
+  ApiService,
+  type JoinGameSessionRequest,
+  type LoginRequest,
+  type RegisterRequest,
+} from './api.service';
 import type {
   AuthResult,
   CategoryDto,
@@ -8,6 +14,7 @@ import type {
   CreateQuizRequest,
   GameSessionDto,
   GameSessionStateDto,
+  JoinGameSessionResult,
   QuestionPoolDto,
   QuizDetailDto,
   QuizDto,
@@ -17,6 +24,7 @@ import type {
   SessionQuestionDto,
   UpdateQuizRequest,
 } from '../models/types';
+import { DEFAULT_AVATAR } from '../data/avatars';
 
 const uid = (prefix: string): string => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -206,8 +214,6 @@ const demoQuizzes: DemoQuiz[] = [
   },
 ];
 
-const demoParticipants: SessionParticipantDto[] = [];
-
 @Injectable()
 export class MockApiService extends ApiService {
   private readonly categories: CategoryDto[] = structuredClone(demoCategories);
@@ -217,8 +223,77 @@ export class MockApiService extends ApiService {
   private readonly sessionStates = new Map<string, GameSessionStateDto>();
   private sessionCounter = 0;
 
+  private static readonly SESSIONS_KEY = 'tki_demo_sessions';
+  private static readonly STATES_KEY = 'tki_demo_states';
+
   constructor() {
     super(inject(HttpClient));
+    this.loadPersisted();
+  }
+
+  private loadPersisted(): void {
+    try {
+      const rawSessions = localStorage.getItem(MockApiService.SESSIONS_KEY);
+      if (rawSessions) {
+        const entries: Array<{ id: string; quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean }> =
+          JSON.parse(rawSessions);
+        for (const entry of entries) {
+          this.sessions.set(entry.id, entry);
+        }
+      }
+    } catch {
+      // depolama yoksa temiz başlanır
+    }
+    this.loadStates();
+  }
+
+  private persist(): void {
+    try {
+      localStorage.setItem(
+        MockApiService.SESSIONS_KEY,
+        JSON.stringify([...this.sessions.entries()].map(([id, session]) => ({ id, ...session }))),
+      );
+      localStorage.setItem(MockApiService.STATES_KEY, JSON.stringify([...this.sessionStates.values()]));
+    } catch {
+      // depolama dolu olabilir; görmezden gelinir
+    }
+  }
+
+  private loadStates(): void {
+    this.sessionStates.clear();
+    try {
+      const raw = localStorage.getItem(MockApiService.STATES_KEY);
+      if (raw) {
+        const entries = JSON.parse(raw) as GameSessionStateDto[];
+        for (const entry of entries) {
+          this.sessionStates.set(entry.id, entry);
+        }
+      }
+    } catch {
+      // temiz başlangıç
+    }
+  }
+
+  private participantsKey(sessionId: string): string {
+    return `tki_demo_participants_${sessionId}`;
+  }
+
+  private loadParticipants(sessionId: string): SessionParticipantDto[] {
+    try {
+      const raw = localStorage.getItem(this.participantsKey(sessionId));
+      const parsed = raw ? (JSON.parse(raw) as SessionParticipantDto[]) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveParticipants(sessionId: string, participants: SessionParticipantDto[]): void {
+    try {
+      localStorage.setItem(this.participantsKey(sessionId), JSON.stringify(participants));
+    } catch {
+      // yok say
+    }
   }
 
   // --- Auth (demo: herhangi bir giriş başarılı) ---
@@ -330,6 +405,7 @@ export class MockApiService extends ApiService {
     );
     this.sessions.set(id, { quizId: data.quizId, quizTitle, pinCode, isTeamMode: data.isTeamMode });
     this.sessionStates.set(id, { id, status: 'Waiting', currentQuestionOrderNo: 0, startedAt: null, finishedAt: null });
+    this.persist();
     return { id, quizId: data.quizId, pinCode, status: 'Waiting' };
   }
 
@@ -339,6 +415,7 @@ export class MockApiService extends ApiService {
       state.status = 'InGame';
       state.currentQuestionOrderNo = 1;
       state.startedAt = new Date().toISOString();
+      this.persist();
     }
     return this.getSessionState(id);
   }
@@ -351,6 +428,7 @@ export class MockApiService extends ApiService {
       if (state.currentQuestionOrderNo < maxOrderNo) {
         state.currentQuestionOrderNo += 1;
       }
+      this.persist();
     }
     return this.getSessionState(id);
   }
@@ -360,11 +438,13 @@ export class MockApiService extends ApiService {
     if (state) {
       state.status = 'Finished';
       state.finishedAt = new Date().toISOString();
+      this.persist();
     }
     return this.getSessionState(id);
   }
 
   override async getSessionState(id: string): Promise<GameSessionStateDto> {
+    this.loadStates();
     return this.sessionStates.get(id) ?? { id, status: 'Waiting', currentQuestionOrderNo: 0, startedAt: null, finishedAt: null };
   }
 
@@ -379,17 +459,74 @@ export class MockApiService extends ApiService {
     }));
   }
 
-  override async getParticipants(_sessionId: string): Promise<SessionParticipantDto[]> {
-    return demoParticipants.map((p) => ({ ...p }));
+  override async joinGame(data: JoinGameSessionRequest): Promise<JoinGameSessionResult> {
+    let sessionId: string | null = null;
+    let session: { quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean } | null = null;
+    for (const [id, candidate] of this.sessions) {
+      if (candidate.pinCode === data.pinCode) {
+        sessionId = id;
+        session = candidate;
+        break;
+      }
+    }
+    if (!sessionId || !session) {
+      throw new ApiError(404, 'Bu PIN ile aktif bir sınav bulunamadı.');
+    }
+
+    const state = this.sessionStates.get(sessionId);
+    if (state && state.status === 'Finished') {
+      throw new ApiError(400, 'Bu sınav oturumu sona erdi.');
+    }
+
+    const playerName = [data.firstName, data.lastName].filter((v) => v?.trim()).join(' ').trim();
+    if (!playerName) {
+      throw new ApiError(400, 'Ad Soyad bilgisi zorunludur.');
+    }
+
+    const participants = this.loadParticipants(sessionId);
+    const normalized = playerName.toLocaleLowerCase('tr-TR');
+    if (participants.some((p) => p.playerName.toLocaleLowerCase('tr-TR') === normalized)) {
+      throw new ApiError(409, 'Bu isim zaten lobide kullanılıyor.');
+    }
+
+    const playerId = uid('oyuncu');
+    participants.push({
+      playerId,
+      playerName,
+      teamName: data.teamName?.trim() || null,
+      avatarEmoji: data.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
+      avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
+    });
+    this.saveParticipants(sessionId, participants);
+
+    return {
+      sessionId,
+      pinCode: session.pinCode,
+      quizTitle: session.quizTitle,
+      playerId,
+      playerName,
+    };
+  }
+
+  override async getParticipants(sessionId: string): Promise<SessionParticipantDto[]> {
+    return this.loadParticipants(sessionId).map((p) => ({ ...p }));
   }
 
   override async getScoreboard(sessionId: string): Promise<ScoreboardDto> {
     const session = this.sessions.get(sessionId);
+    const participants = this.loadParticipants(sessionId);
     return {
       sessionId,
       quizTitle: session?.quizTitle ?? 'Demo Sınav',
       isTeamMode: session?.isTeamMode ?? false,
-      individual: [],
+      individual: participants.map((p) => ({
+        playerId: p.playerId,
+        playerName: p.playerName,
+        teamName: p.teamName,
+        score: 0,
+        correctCount: 0,
+        totalAnswers: 0,
+      })),
       teams: [],
     };
   }
@@ -401,17 +538,24 @@ export class MockApiService extends ApiService {
   override async downloadReport(sessionId: string, format: 'pdf' | 'excel'): Promise<void> {
     const session = this.sessions.get(sessionId);
     const title = session?.quizTitle ?? 'Demo Sınav';
-    const content = [
+    const participants = this.loadParticipants(sessionId);
+    const lines = [
       'TKİ KAHOOT OYUN RAPORU',
       `Sınav: ${title}`,
       `Oturum: ${sessionId}`,
       `Tarih: ${new Date().toLocaleString('tr-TR')}`,
       '',
       'Oyuncu Skor Tablosu',
-      'Katılımcı bulunmuyor.',
-      '',
-      'Bu rapor sunum amaçlı demo verisidir.',
-    ].join('\n');
+    ];
+    if (participants.length === 0) {
+      lines.push('Katılımcı bulunmuyor.');
+    } else {
+      participants.forEach((p, index) => {
+        lines.push(`${index + 1}. ${p.playerName}${p.teamName ? ` (${p.teamName})` : ''} - 0 puan - 0/0 doğru`);
+      });
+    }
+    lines.push('', 'Bu rapor sunum amaçlı demo verisidir.');
+    const content = lines.join('\n');
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

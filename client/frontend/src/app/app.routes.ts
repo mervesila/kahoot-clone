@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home';
+import { JoinPageComponent } from './pages/player/join/join';
 import { PlayerEntryComponent } from './pages/player/player-entry/player-entry';
 import { PlayerLobbyComponent } from './pages/player/player-lobby/player-lobby';
 import { PlayerGameComponent } from './pages/player/player-game/player-game';
@@ -11,6 +12,7 @@ import { adminGuard } from './guards/admin.guard';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'join', component: JoinPageComponent },
   { path: 'player', component: PlayerEntryComponent },
   { path: 'player/lobby', component: PlayerLobbyComponent },
   { path: 'player/game', component: PlayerGameComponent },

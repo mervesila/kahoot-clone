@@ -47,24 +47,8 @@ public class MoveToNextQuestionCommandHandler : IRequestHandler<MoveToNextQuesti
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        var totalQuestions = await _db.GameSessionQuestions.CountAsync(
-            gsq => gsq.GameSessionId == session.Id,
-            cancellationToken);
-
-        var questionInfo = await _db.GameSessionQuestions
-            .AsNoTracking()
-            .Where(gsq => gsq.GameSessionId == session.Id
-                && gsq.OrderNo == session.CurrentQuestionOrderNo)
-            .Select(gsq => new { gsq.Question.TimeLimitInSeconds, gsq.Question.Points })
-            .FirstOrDefaultAsync(cancellationToken);
-
         await _notifier.QuestionStartedAsync(
-            new QuestionStartedEvent(
-                session.Id,
-                session.CurrentQuestionOrderNo,
-                totalQuestions,
-                questionInfo?.TimeLimitInSeconds ?? 30,
-                questionInfo?.Points ?? 0),
+            await QuestionStartedEventBuilder.BuildAsync(_db, session, cancellationToken),
             cancellationToken);
 
         return new GameSessionStateDto

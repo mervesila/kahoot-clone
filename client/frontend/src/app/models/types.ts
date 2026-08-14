@@ -200,12 +200,21 @@ export interface GameStartedEvent {
   firstQuestionOrderNo: number;
 }
 
+export interface QuestionStartedOption {
+  optionId: string;
+  text: string;
+}
+
 export interface QuestionStartedEvent {
   sessionId: string;
   orderNo: number;
   totalQuestions: number;
   timeLimitInSeconds: number;
   points: number;
+  questionId?: string;
+  text?: string;
+  options?: QuestionStartedOption[];
+  jokersEnabled?: boolean;
 }
 
 export interface AnswerSubmittedEvent {

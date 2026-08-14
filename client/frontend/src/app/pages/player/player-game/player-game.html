@@ -12,10 +12,6 @@
     </header>
 
     <main class="main pg-main">
-      @if (error()) {
-        <app-alert class="mb-4" [message]="error()" />
-      }
-
       @if (phase() === 'connecting' || phase() === 'waiting') {
         <div class="pg-waiting">
           <app-spinner label="Soru hazırlanıyor..." />

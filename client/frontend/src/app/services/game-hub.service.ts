@@ -16,11 +16,18 @@ import type {
 
 const HUB_URL = `${environment.apiUrl.replace(/\/$/, '')}/hubs/game`;
 
+const RECONNECT_DELAY_MS = 5000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 @Injectable({ providedIn: 'root' })
 export class GameHubService {
   private connection: signalR.HubConnection | null = null;
   private startPromise: Promise<signalR.HubConnection> | null = null;
   private joinedSessions = new Set<string>();
+  private stopped = false;
 
   readonly playerJoined$ = new Subject<PlayerJoinedEvent>();
   readonly roomPlayersUpdated$ = new Subject<RoomPlayersUpdatedEvent>();
@@ -32,15 +39,19 @@ export class GameHubService {
   readonly playerAvatarUpdated$ = new Subject<PlayerAvatarUpdatedEvent>();
 
   getConnection(): Promise<signalR.HubConnection> {
+    this.stopped = false;
+
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
       return Promise.resolve(this.connection);
     }
 
-    if (this.connection?.state === signalR.HubConnectionState.Connecting && this.startPromise) {
-      return this.startPromise;
-    }
-
-    if (this.connection?.state === signalR.HubConnectionState.Reconnecting) {
+    if (
+      this.connection?.state === signalR.HubConnectionState.Connecting ||
+      this.connection?.state === signalR.HubConnectionState.Reconnecting
+    ) {
+      if (this.startPromise) {
+        return this.startPromise;
+      }
       return Promise.resolve(this.connection);
     }
 
@@ -49,25 +60,32 @@ export class GameHubService {
       this.startPromise = null;
     }
 
-    this.connection = new signalR.HubConnectionBuilder()
+    const connection = new signalR.HubConnectionBuilder()
       .withUrl(HUB_URL, {
         accessTokenFactory: () => getToken() ?? '',
       })
-      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+      .withAutomaticReconnect({ nextRetryDelayInMilliseconds: () => RECONNECT_DELAY_MS })
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
-    this.connection.onreconnected(() => {
+    this.connection = connection;
+    this.registerHandlers(connection);
+
+    connection.onreconnected(() => {
       void this.rejoinGroups();
     });
 
-    this.registerHandlers(this.connection);
+    connection.onclose(() => {
+      this.startPromise = null;
+      void this.silentRetry();
+    });
 
-    this.startPromise = this.connection
+    this.startPromise = connection
       .start()
       .then(() => this.connection!)
       .catch((err) => {
         this.startPromise = null;
+        void this.silentRetry();
         throw err;
       });
 
@@ -125,7 +143,24 @@ export class GameHubService {
     }
   }
 
+  private async silentRetry(): Promise<void> {
+    await delay(RECONNECT_DELAY_MS);
+    if (this.stopped) {
+      return;
+    }
+    if (this.connection?.state === signalR.HubConnectionState.Connected) {
+      return;
+    }
+    try {
+      await this.getConnection();
+      await this.rejoinGroups();
+    } catch {
+      // Bağlantı kurulamazsa kullanıcıya gösterilmez, arka planda denemeye devam edilir.
+    }
+  }
+
   async stop(): Promise<void> {
+    this.stopped = true;
     if (this.connection) {
       await this.connection.stop();
       this.connection = null;

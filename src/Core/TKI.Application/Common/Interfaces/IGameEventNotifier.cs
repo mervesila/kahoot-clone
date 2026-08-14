@@ -6,12 +6,18 @@ public record PlayerJoinedEvent(Guid SessionId, Guid PlayerId, string PlayerName
 
 public record GameStartedEvent(Guid SessionId, int FirstQuestionOrderNo);
 
+public record QuestionStartedOption(string OptionId, string Text);
+
 public record QuestionStartedEvent(
     Guid SessionId,
     int OrderNo,
     int TotalQuestions,
     int TimeLimitInSeconds,
-    int Points);
+    int Points,
+    Guid QuestionId,
+    string Text,
+    List<QuestionStartedOption> Options,
+    bool JokersEnabled);
 
 public record AnswerSubmittedEvent(
     Guid SessionId,

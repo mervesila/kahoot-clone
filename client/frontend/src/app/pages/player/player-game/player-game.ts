@@ -2,14 +2,13 @@ import { Component, DestroyRef, computed, effect, inject, signal } from '@angula
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { AlertComponent } from '../../../shared/alert/alert';
 import { AnswerButtonComponent } from '../../../shared/answer-button/answer-button';
 import { CountdownBarComponent } from '../../../shared/countdown-bar/countdown-bar';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { ScoreTableComponent } from '../../../shared/score-table/score-table';
 import { SoundToggleComponent } from '../../../shared/sound-toggle/sound-toggle';
 import { SpinnerComponent } from '../../../shared/spinner/spinner';
-import { ApiError, ApiService } from '../../../services/api.service';
+import { ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
@@ -30,7 +29,6 @@ const EXTRA_TIME_SECONDS = 15;
 @Component({
   selector: 'app-player-game',
   imports: [
-    AlertComponent,
     AnswerButtonComponent,
     CountdownBarComponent,
     LogoComponent,
@@ -60,7 +58,6 @@ export class PlayerGameComponent {
   readonly questionStartedAt = signal(0);
   readonly scoreboard = signal<ScoreboardDto | null>(null);
   readonly timedOut = signal(false);
-  readonly error = signal('');
 
   private answered = false;
 
@@ -116,7 +113,18 @@ export class PlayerGameComponent {
     void this.hub
       .getConnection()
       .then(() => this.hub.joinGameGroup(currentSession.sessionId))
-      .catch(() => this.error.set('Canlı sunucuya bağlanılamadı.'));
+      .catch(() => {
+        // Bağlantı başarısız olursa kullanıcıya gösterilmez; arka planda yeniden bağlanılır.
+      });
+
+    const pollTimer = setInterval(() => {
+      const p = this.phase();
+      if (p === 'question' || p === 'finished') {
+        return;
+      }
+      void this.restoreFromServer(currentSession);
+    }, 4000);
+    this.destroyRef.onDestroy(() => clearInterval(pollTimer));
 
     this.hub.questionStarted$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -160,7 +168,7 @@ export class PlayerGameComponent {
 
   private async restoreFromServer(currentSession: PlayerSession): Promise<void> {
     const p = this.phase();
-    if (p === 'question' || p === 'answered' || p === 'finished') {
+    if (p === 'question' || p === 'finished') {
       return;
     }
     try {
@@ -171,12 +179,18 @@ export class PlayerGameComponent {
         return;
       }
       this.usedJokers.set(current.usedJokers ?? []);
-      if (current.questionId) {
+      if (!current.questionId) {
+        return;
+      }
+      const sameQuestion = this.question()?.questionId === current.questionId;
+      if (!sameQuestion) {
         this.answered = current.answered;
         this.question.set(current);
         this.duration.set(current.timeLimitInSeconds);
         this.questionStartedAt.set(Date.now());
-        if (current.answered) {
+      }
+      if (current.answered) {
+        if (p !== 'answered') {
           this.result.set({
             answerId: '',
             isCorrect: current.isCorrect ?? false,
@@ -186,9 +200,11 @@ export class PlayerGameComponent {
             usedJokers: [],
           });
           this.phase.set('answered');
-        } else {
-          this.phase.set('question');
         }
+      } else if (!sameQuestion) {
+        this.phase.set('question');
+      }
+      if (!sameQuestion) {
         await this.loadScoreboard(currentSession.sessionId);
       }
     } catch {
@@ -208,6 +224,22 @@ export class PlayerGameComponent {
     this.timedOut.set(false);
     this.duration.set(event.timeLimitInSeconds);
     this.questionStartedAt.set(Date.now());
+
+    if (event.questionId && event.text && event.options) {
+      this.question.set({
+        answered: false,
+        finished: false,
+        questionId: event.questionId,
+        text: event.text,
+        orderNo: event.orderNo,
+        totalQuestions: event.totalQuestions,
+        timeLimitInSeconds: event.timeLimitInSeconds,
+        points: event.points,
+        options: event.options,
+        jokersEnabled: event.jokersEnabled,
+      });
+      this.phase.set('question');
+    }
 
     try {
       const fetched = await this.api.getQuestion(currentSession.sessionId, currentSession.playerId);
@@ -229,12 +261,12 @@ export class PlayerGameComponent {
           responseTimeInSeconds: 0,
           usedJokers: [],
         });
-      } else {
+      } else if (this.phase() !== 'question') {
         this.phase.set('question');
       }
       await this.loadScoreboard(currentSession.sessionId);
-    } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Soru alınamadı.');
+    } catch {
+      // Soru verisi alınamazsa sessizce geç; event verisiyle ekran zaten güncellendi.
     }
   }
 
@@ -260,8 +292,8 @@ export class PlayerGameComponent {
       });
       this.result.set(answer);
       this.audio.playSfx(answer.isCorrect ? 'correct' : 'wrong');
-    } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Cevap gönderilemedi.');
+    } catch {
+      // Cevap gönderilemezse sessizce geç; soru akışı devam eder.
     } finally {
       this.phase.set('answered');
       await this.loadScoreboard(session.sessionId);
@@ -294,8 +326,8 @@ export class PlayerGameComponent {
         const refreshed = await this.api.getQuestion(session.sessionId, session.playerId);
         this.question.set(refreshed);
       }
-    } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Joker kullanılamadı.');
+    } catch {
+      // Joker kullanılamazsa sessizce geç.
     }
   }
 

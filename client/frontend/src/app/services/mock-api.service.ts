@@ -773,6 +773,16 @@ export class MockApiService extends ApiService {
       this.saveParticipants(announced.sessionId, remoteParticipants);
     }
 
+    if (!this.sessions.has(announced.sessionId)) {
+      this.sessions.set(announced.sessionId, {
+        quizId: '',
+        quizTitle: announced.quizTitle,
+        pinCode: data.pinCode,
+        isTeamMode: false,
+      });
+      this.persist();
+    }
+
     this.relayDisconnects.push(
       this.relay.connect(data.pinCode, false, (msg) =>
         this.handleRelayMessage(announced.sessionId, data.pinCode, msg),

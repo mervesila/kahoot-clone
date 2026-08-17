@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, ChangeDetectorRef, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -65,6 +65,7 @@ export class HostControlComponent {
   private readonly hub = inject(GameHubService);
   private readonly sessions = inject(SessionService);
   private readonly relay = inject(RelayService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly host = signal<HostSession | null>(null);
@@ -193,6 +194,7 @@ export class HostControlComponent {
             scoreEarned: event.scoreEarned,
           },
         ]);
+        this.cdr.detectChanges();
         void this.loadScoreboard(sessionId);
       });
 
@@ -201,6 +203,7 @@ export class HostControlComponent {
       .subscribe((event: JokerUsedEvent) => {
         if (event.sessionId === sessionId) {
           this.jokers.update((prev) => [...prev, event.jokerType]);
+          this.cdr.detectChanges();
         }
       });
 

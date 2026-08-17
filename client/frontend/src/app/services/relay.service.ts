@@ -37,6 +37,21 @@ export interface RelayRequest {
   pinCode: string;
 }
 
+export interface RelayAnswer {
+  sessionId: string;
+  playerId: string;
+  playerName: string;
+  isCorrect: boolean;
+  scoreEarned: number;
+  newTotalScore: number;
+}
+
+export interface RelayJoker {
+  sessionId: string;
+  playerId: string;
+  jokerType: string;
+}
+
 export interface RelayGameOption {
   optionId: string;
   text: string;
@@ -69,6 +84,8 @@ export type RelayMessage =
   | ({ type: 'reject' } & RelayReject)
   | ({ type: 'accept' } & RelayAccept)
   | ({ type: 'request' } & RelayRequest)
+  | ({ type: 'answer' } & RelayAnswer)
+  | ({ type: 'joker' } & RelayJoker)
   | ({ type: 'game' } & RelayGameState);
 
 const HUB_HTTPS = environment.relayUrl;

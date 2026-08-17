@@ -6,12 +6,14 @@ import {
   type JoinGameSessionRequest,
   type LoginRequest,
   type RegisterRequest,
+  type SubmitAnswerRequest,
 } from './api.service';
 import type {
   AuthResult,
   CategoryDto,
   CreateCategoryRequest,
   CreateQuizRequest,
+  CurrentQuestionDto,
   GameSessionDto,
   GameSessionStateDto,
   JoinGameSessionResult,
@@ -22,9 +24,11 @@ import type {
   ScoreboardDto,
   SessionParticipantDto,
   SessionQuestionDto,
+  SubmitAnswerResult,
   UpdateQuizRequest,
 } from '../models/types';
 import { DEFAULT_AVATAR } from '../data/avatars';
+import { GameHubService } from './game-hub.service';
 import { RelayService, type RelayMessage } from './relay.service';
 
 const uid = (prefix: string): string => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
@@ -38,6 +42,19 @@ interface DemoQuiz extends QuizDto {}
 interface DemoQuestionSpec {
   text: string;
   options: { text: string; isCorrect: boolean }[];
+}
+
+interface AnswerRecord {
+  sessionId: string;
+  playerId: string;
+  playerName: string;
+  questionId: string;
+  selectedOptionId: string;
+  responseTimeInSeconds: number;
+  isCorrect: boolean;
+  scoreEarned: number;
+  correctOptionId: string;
+  usedJokers: string[];
 }
 
 const questionPool: Record<string, DemoQuestionSpec[]> = {
@@ -222,12 +239,15 @@ export class MockApiService extends ApiService {
   private readonly sessions = new Map<string, { quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean }>();
   private readonly sessionQuestionsMap = new Map<string, SessionQuestionDto[]>();
   private readonly sessionStates = new Map<string, GameSessionStateDto>();
+  private readonly answers = new Map<string, AnswerRecord>();
+  private readonly jokerUsages = new Map<string, Set<string>>();
   private sessionCounter = 0;
 
   private static readonly SESSIONS_KEY = 'tki_demo_sessions';
   private static readonly STATES_KEY = 'tki_demo_states';
 
   private readonly relay = inject(RelayService);
+  private readonly hub = inject(GameHubService);
   private readonly relayDisconnects: Array<() => void> = [];
 
   constructor() {
@@ -248,6 +268,25 @@ export class MockApiService extends ApiService {
           this.announce(sessionId, session, true);
         }
       }
+      return;
+    }
+    if (msg.type === 'answer' && msg.sessionId === sessionId) {
+      this.hub.answerSubmitted$.next({
+        sessionId: msg.sessionId,
+        playerId: msg.playerId,
+        playerName: msg.playerName,
+        isCorrect: msg.isCorrect,
+        scoreEarned: msg.scoreEarned,
+        newTotalScore: msg.newTotalScore,
+      });
+      return;
+    }
+    if (msg.type === 'joker' && msg.sessionId === sessionId) {
+      this.hub.jokerUsed$.next({
+        sessionId: msg.sessionId,
+        playerId: msg.playerId,
+        jokerType: msg.jokerType as 'FiftyFifty' | 'DoublePoints' | 'ExtraTime',
+      });
       return;
     }
     if (msg.type !== 'join' || msg.sessionId !== sessionId) {
@@ -355,6 +394,29 @@ export class MockApiService extends ApiService {
 
   private participantsKey(sessionId: string): string {
     return `tki_demo_participants_${sessionId}`;
+  }
+
+  private answerKey(sessionId: string, playerId: string, questionId: string): string {
+    return `${sessionId}__${playerId}__${questionId}`;
+  }
+
+  private jokerKey(sessionId: string, playerId: string, questionId: string): string {
+    return `${sessionId}__${playerId}__${questionId}`;
+  }
+
+  private getPlayerName(sessionId: string, playerId: string): string {
+    const participants = this.loadParticipants(sessionId);
+    return participants.find((p) => p.playerId === playerId)?.playerName ?? 'Oyuncu';
+  }
+
+  private calculatePlayerScore(sessionId: string, playerId: string): number {
+    let total = 0;
+    for (const [key, answer] of this.answers) {
+      if (key.startsWith(sessionId) && key.includes(playerId)) {
+        total += answer.scoreEarned;
+      }
+    }
+    return total;
   }
 
   private loadParticipants(sessionId: string): SessionParticipantDto[] {
@@ -682,21 +744,197 @@ export class MockApiService extends ApiService {
     return this.loadParticipants(sessionId).map((p) => ({ ...p }));
   }
 
+  // --- Oyuncu cevap/joker akışı (demo modu) ---
+
+  override async getQuestion(id: string, playerId: string): Promise<CurrentQuestionDto> {
+    const state = this.sessionStates.get(id);
+    const questions = this.sessionQuestionsMap.get(id);
+    if (!state || !questions || questions.length === 0) {
+      throw new ApiError(404, 'Oturum bulunamadı.');
+    }
+    const question = questions.find((q) => q.orderNo === state.currentQuestionOrderNo);
+    if (!question) {
+      throw new ApiError(404, 'Aktif soru bulunamadı.');
+    }
+    const aKey = this.answerKey(id, playerId, question.questionId);
+    const answer = this.answers.get(aKey);
+    const jKey = this.jokerKey(id, playerId, question.questionId);
+    const usedJokers = [...(this.jokerUsages.get(jKey) ?? [])];
+
+    let options = question.options.map((o) => ({ optionId: o.optionId, text: o.text }));
+    if (usedJokers.includes('FiftyFifty') && !answer) {
+      const correct = question.options.find((o) => o.isCorrect)!;
+      const wrongs = question.options.filter((o) => !o.isCorrect);
+      const keptWrong = wrongs[Math.floor(Math.random() * wrongs.length)];
+      options = [
+        { optionId: correct.optionId, text: correct.text },
+        { optionId: keptWrong.optionId, text: keptWrong.text },
+      ];
+    }
+
+    const result: CurrentQuestionDto = {
+      answered: !!answer,
+      finished: false,
+      questionId: question.questionId,
+      text: question.text,
+      orderNo: state.currentQuestionOrderNo,
+      totalQuestions: questions.length,
+      timeLimitInSeconds: question.timeLimitInSeconds,
+      points: question.points,
+      options,
+      jokersEnabled: true,
+    };
+    if (answer) {
+      result.isCorrect = answer.isCorrect;
+      result.scoreEarned = answer.scoreEarned;
+      result.correctOptionId = answer.correctOptionId;
+      result.usedJokers = answer.usedJokers;
+    }
+    return result;
+  }
+
+  override async submitAnswer(id: string, data: SubmitAnswerRequest): Promise<SubmitAnswerResult> {
+    const questions = this.sessionQuestionsMap.get(id);
+    const question = questions?.find((q) => q.questionId === data.questionId);
+    if (!question) {
+      throw new ApiError(404, 'Soru bulunamadı.');
+    }
+    const correctOption = question.options.find((o) => o.isCorrect);
+    if (!correctOption) {
+      throw new ApiError(500, 'Doğru cevap bulunamadı.');
+    }
+    const selectedOption = question.options.find((o) => o.optionId === data.selectedOptionId);
+    if (!selectedOption) {
+      throw new ApiError(400, 'Geçersiz seçenek.');
+    }
+    const aKey = this.answerKey(id, data.playerId, data.questionId);
+    if (this.answers.has(aKey)) {
+      throw new ApiError(400, 'Bu soruya zaten cevap verildi.');
+    }
+
+    const isCorrect = selectedOption.isCorrect;
+    const jKey = this.jokerKey(id, data.playerId, data.questionId);
+    const usedJokers = [...(this.jokerUsages.get(jKey) ?? [])];
+
+    let scoreEarned = 0;
+    if (isCorrect) {
+      let timeLimit = question.timeLimitInSeconds;
+      if (usedJokers.includes('ExtraTime')) {
+        timeLimit += 15;
+      }
+      const effectiveTime = Math.min(Math.max(data.responseTimeInSeconds, 0), timeLimit);
+      const timeFactor = 1.0 - (effectiveTime / timeLimit) * 0.5;
+      scoreEarned = Math.round(question.points * timeFactor);
+      if (usedJokers.includes('DoublePoints')) {
+        scoreEarned *= 2;
+      }
+      scoreEarned = Math.max(0, scoreEarned);
+    }
+
+    const playerName = this.getPlayerName(id, data.playerId);
+    const record: AnswerRecord = {
+      sessionId: id,
+      playerId: data.playerId,
+      playerName,
+      questionId: data.questionId,
+      selectedOptionId: data.selectedOptionId,
+      responseTimeInSeconds: data.responseTimeInSeconds,
+      isCorrect,
+      scoreEarned,
+      correctOptionId: correctOption.optionId,
+      usedJokers,
+    };
+    this.answers.set(aKey, record);
+
+    const newTotalScore = this.calculatePlayerScore(id, data.playerId);
+    this.hub.answerSubmitted$.next({
+      sessionId: id,
+      playerId: data.playerId,
+      playerName,
+      isCorrect,
+      scoreEarned,
+      newTotalScore,
+    });
+    const session = this.sessions.get(id);
+    if (session) {
+      void this.relay.publish(session.pinCode, {
+        type: 'answer',
+        sessionId: id,
+        playerId: data.playerId,
+        playerName,
+        isCorrect,
+        scoreEarned,
+        newTotalScore,
+      });
+    }
+
+    return {
+      answerId: uid('cevap'),
+      isCorrect,
+      scoreEarned,
+      correctOptionId: correctOption.optionId,
+      responseTimeInSeconds: data.responseTimeInSeconds,
+      usedJokers,
+    };
+  }
+
+  override async useJoker(id: string, playerId: string, questionId: string, jokerType: string): Promise<void> {
+    const jKey = this.jokerKey(id, playerId, questionId);
+    const used = this.jokerUsages.get(jKey) ?? new Set<string>();
+    if (used.has(jokerType)) {
+      throw new ApiError(400, 'Bu joker zaten kullanıldı.');
+    }
+    const aKey = this.answerKey(id, playerId, questionId);
+    if (this.answers.has(aKey)) {
+      throw new ApiError(400, 'Bu soruya zaten cevap verildi.');
+    }
+    used.add(jokerType);
+    this.jokerUsages.set(jKey, used);
+
+    const playerName = this.getPlayerName(id, playerId);
+    this.hub.jokerUsed$.next({
+      sessionId: id,
+      playerId,
+      jokerType: jokerType as 'FiftyFifty' | 'DoublePoints' | 'ExtraTime',
+    });
+    const session = this.sessions.get(id);
+    if (session) {
+      void this.relay.publish(session.pinCode, {
+        type: 'joker',
+        sessionId: id,
+        playerId,
+        jokerType,
+      });
+    }
+  }
+
   override async getScoreboard(sessionId: string): Promise<ScoreboardDto> {
     const session = this.sessions.get(sessionId);
     const participants = this.loadParticipants(sessionId);
+    const playerStats = new Map<string, { score: number; correctCount: number; totalAnswers: number }>();
+    for (const [key, answer] of this.answers) {
+      if (!key.startsWith(sessionId)) continue;
+      const existing = playerStats.get(answer.playerId) ?? { score: 0, correctCount: 0, totalAnswers: 0 };
+      existing.score += answer.scoreEarned;
+      existing.totalAnswers += 1;
+      if (answer.isCorrect) existing.correctCount += 1;
+      playerStats.set(answer.playerId, existing);
+    }
     return {
       sessionId,
       quizTitle: session?.quizTitle ?? 'Demo Sınav',
       isTeamMode: session?.isTeamMode ?? false,
-      individual: participants.map((p) => ({
-        playerId: p.playerId,
-        playerName: p.playerName,
-        teamName: p.teamName,
-        score: 0,
-        correctCount: 0,
-        totalAnswers: 0,
-      })),
+      individual: participants.map((p) => {
+        const stats = playerStats.get(p.playerId) ?? { score: 0, correctCount: 0, totalAnswers: 0 };
+        return {
+          playerId: p.playerId,
+          playerName: p.playerName,
+          teamName: p.teamName,
+          score: stats.score,
+          correctCount: stats.correctCount,
+          totalAnswers: stats.totalAnswers,
+        };
+      }),
       teams: [],
     };
   }

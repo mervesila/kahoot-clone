@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, ChangeDetectorRef, computed, DestroyRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -51,6 +51,7 @@ export class HostLobbyComponent {
   private readonly hub = inject(GameHubService);
   private readonly sessions = inject(SessionService);
   private readonly relay = inject(RelayService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly host = signal<HostSession | null>(null);
@@ -134,14 +135,15 @@ export class HostLobbyComponent {
 
     if (environment.demo) {
       const relayDisconnect = this.relay.connect(stored.pinCode, false, (msg) => {
-        if (msg.type === 'join') {
+        if (msg.type === 'PLAYER_JOINED') {
           this.upsertPlayer({
-            playerId: msg.playerId,
-            name: msg.playerName,
-            teamName: msg.teamName,
+            playerId: String(msg.player.id),
+            name: msg.player.name,
+            teamName: msg.teamName ?? null,
             emoji: msg.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
             color: msg.avatarColor?.trim() || DEFAULT_AVATAR.color,
           });
+          this.cdr.detectChanges();
         }
       });
       this.destroyRef.onDestroy(() => relayDisconnect());

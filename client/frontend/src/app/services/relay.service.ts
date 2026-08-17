@@ -16,6 +16,17 @@ export interface RelayJoin {
   avatarColor: string;
 }
 
+export interface RelayPlayerJoined {
+  player: {
+    id: number | string;
+    name: string;
+  };
+  sessionId?: string;
+  teamName?: string | null;
+  avatarEmoji?: string;
+  avatarColor?: string;
+}
+
 export interface RelayState {
   sessionId: string;
   status: 'Waiting' | 'InGame' | 'Finished';
@@ -82,6 +93,7 @@ export interface RelayGameState {
 export type RelayMessage =
   | ({ type: 'announce' } & RelayAnnounce)
   | ({ type: 'join' } & RelayJoin)
+  | ({ type: 'PLAYER_JOINED' } & RelayPlayerJoined)
   | ({ type: 'state' } & RelayState)
   | ({ type: 'reject' } & RelayReject)
   | ({ type: 'accept' } & RelayAccept)
@@ -119,7 +131,7 @@ export class RelayService {
   private readonly accepts: RelayAccept[] = [];
 
   topicFor(pinCode: string): string {
-    return `tki-kahoot-pin-${pinCode}`;
+    return `tki-kahoot-${pinCode}`;
   }
 
   getAnnounced(pinCode: string): RelayAnnounce | null {

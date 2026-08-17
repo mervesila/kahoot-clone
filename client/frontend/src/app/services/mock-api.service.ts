@@ -312,6 +312,45 @@ export class MockApiService extends ApiService {
       }
       return;
     }
+    if (msg.type === 'PLAYER_JOINED') {
+      const targetSessionId = msg.sessionId ?? sessionId;
+      const state = this.sessionStates.get(targetSessionId);
+      if (state && state.status === 'Finished') {
+        void this.relay.publish(pinCode, {
+          type: 'reject',
+          sessionId: targetSessionId,
+          playerName: msg.player.name,
+          message: 'Bu sınav oturumu sona erdi.',
+        });
+        return;
+      }
+      const participants = this.loadParticipants(targetSessionId);
+      const normalized = msg.player.name.toLocaleLowerCase('tr-TR');
+      if (participants.some((p) => p.playerName.toLocaleLowerCase('tr-TR') === normalized)) {
+        void this.relay.publish(pinCode, {
+          type: 'reject',
+          sessionId: targetSessionId,
+          playerName: msg.player.name,
+          message: 'Bu isim zaten lobide kullanılıyor.',
+        });
+        return;
+      }
+      const playerId = String(msg.player.id);
+      participants.push({
+        playerId,
+        playerName: msg.player.name,
+        teamName: msg.teamName ?? null,
+        avatarEmoji: msg.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
+        avatarColor: msg.avatarColor?.trim() || DEFAULT_AVATAR.color,
+      });
+      this.saveParticipants(targetSessionId, participants);
+      void this.relay.publish(pinCode, {
+        type: 'accept',
+        sessionId: targetSessionId,
+        playerName: msg.player.name,
+      });
+      return;
+    }
     if (msg.type !== 'join' || msg.sessionId !== sessionId) {
       return;
     }

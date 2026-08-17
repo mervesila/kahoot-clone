@@ -135,10 +135,12 @@ export class JoinPageComponent {
     }
 
     await this.relay.publish(p.pin, {
-      type: 'join',
+      type: 'PLAYER_JOINED',
+      player: {
+        id: Date.now(),
+        name: p.name,
+      },
       sessionId: announced.sessionId,
-      playerId: p.playerId,
-      playerName: p.name,
       teamName: null,
       avatarEmoji: DEFAULT_AVATAR.emoji,
       avatarColor: DEFAULT_AVATAR.color,

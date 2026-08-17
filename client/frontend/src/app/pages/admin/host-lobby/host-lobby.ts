@@ -11,6 +11,7 @@ import { ApiError, ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
 import { SessionService, type HostSession } from '../../../services/session.service';
+import { RelayService } from '../../../services/relay.service';
 import { DEFAULT_AVATAR } from '../../../data/avatars';
 import { environment } from '../../../../environments/environment';
 import type {
@@ -49,6 +50,7 @@ export class HostLobbyComponent {
   private readonly audio = inject(AudioService);
   private readonly hub = inject(GameHubService);
   private readonly sessions = inject(SessionService);
+  private readonly relay = inject(RelayService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly host = signal<HostSession | null>(null);
@@ -129,6 +131,21 @@ export class HostLobbyComponent {
         this.players.set(list.map((p) => this.toLobbyPlayer(p)));
       })
       .catch(() => undefined);
+
+    if (environment.demo) {
+      const relayDisconnect = this.relay.connect(stored.pinCode, false, (msg) => {
+        if (msg.type === 'join') {
+          this.upsertPlayer({
+            playerId: msg.playerId,
+            name: msg.playerName,
+            teamName: msg.teamName,
+            emoji: msg.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
+            color: msg.avatarColor?.trim() || DEFAULT_AVATAR.color,
+          });
+        }
+      });
+      this.destroyRef.onDestroy(() => relayDisconnect());
+    }
 
     if (environment.demo) {
       const poll = setInterval(() => {

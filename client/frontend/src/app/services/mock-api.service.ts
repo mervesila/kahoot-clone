@@ -360,7 +360,7 @@ export class MockApiService extends ApiService {
   ): void {
     const now = Date.now();
     const last = this.lastAnnounceAt.get(sessionId) ?? 0;
-    if (!force && now - last < 15000) {
+    if (!force && now - last < 2000) {
       return;
     }
     this.lastAnnounceAt.set(sessionId, now);

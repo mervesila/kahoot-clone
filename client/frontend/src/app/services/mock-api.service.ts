@@ -241,6 +241,8 @@ export class MockApiService extends ApiService {
   private readonly sessionStates = new Map<string, GameSessionStateDto>();
   private readonly answers = new Map<string, AnswerRecord>();
   private readonly jokerUsages = new Map<string, Set<string>>();
+  private readonly relayQuestionCache = new Map<string, SessionQuestionDto[]>();
+  private readonly relayOrderNo = new Map<string, number>();
   private sessionCounter = 0;
 
   private static readonly SESSIONS_KEY = 'tki_demo_sessions';
@@ -287,6 +289,27 @@ export class MockApiService extends ApiService {
         playerId: msg.playerId,
         jokerType: msg.jokerType as 'FiftyFifty' | 'DoublePoints' | 'ExtraTime',
       });
+      return;
+    }
+    if (msg.type === 'game' && msg.sessionId) {
+      this.relayOrderNo.set(msg.sessionId, msg.currentQuestionIndex + 1);
+      if (msg.question && !this.sessionQuestionsMap.has(msg.sessionId)) {
+        const correctId = msg.question.correctOptionId;
+        const options = (msg.question.options ?? []).map((o) => ({
+          optionId: o.optionId,
+          text: o.text,
+          isCorrect: correctId ? o.optionId === correctId : false,
+        }));
+        this.relayQuestionCache.set(msg.sessionId, [{
+          questionId: msg.question.id ?? msg.questionId ?? '',
+          text: msg.question.text,
+          categoryName: '',
+          orderNo: msg.currentQuestionIndex + 1,
+          timeLimitInSeconds: msg.question.duration,
+          points: msg.question.points ?? 1000,
+          options,
+        }]);
+      }
       return;
     }
     if (msg.type !== 'join' || msg.sessionId !== sessionId) {
@@ -417,6 +440,18 @@ export class MockApiService extends ApiService {
       }
     }
     return total;
+  }
+
+  private resolveQuestions(sessionId: string): SessionQuestionDto[] | null {
+    return this.sessionQuestionsMap.get(sessionId) ?? this.relayQuestionCache.get(sessionId) ?? null;
+  }
+
+  private resolveOrderNo(sessionId: string): number {
+    const local = this.sessionStates.get(sessionId);
+    if (local && local.currentQuestionOrderNo > 0) {
+      return local.currentQuestionOrderNo;
+    }
+    return this.relayOrderNo.get(sessionId) ?? 0;
   }
 
   private loadParticipants(sessionId: string): SessionParticipantDto[] {
@@ -747,15 +782,12 @@ export class MockApiService extends ApiService {
   // --- Oyuncu cevap/joker akışı (demo modu) ---
 
   override async getQuestion(id: string, playerId: string): Promise<CurrentQuestionDto> {
-    const state = this.sessionStates.get(id);
-    const questions = this.sessionQuestionsMap.get(id);
-    if (!state || !questions || questions.length === 0) {
+    const questions = this.resolveQuestions(id);
+    const orderNo = this.resolveOrderNo(id);
+    if (!questions || questions.length === 0 || orderNo === 0) {
       throw new ApiError(404, 'Oturum bulunamadı.');
     }
-    const question = questions.find((q) => q.orderNo === state.currentQuestionOrderNo);
-    if (!question) {
-      throw new ApiError(404, 'Aktif soru bulunamadı.');
-    }
+    const question = questions.find((q) => q.orderNo === orderNo) ?? questions[0];
     const aKey = this.answerKey(id, playerId, question.questionId);
     const answer = this.answers.get(aKey);
     const jKey = this.jokerKey(id, playerId, question.questionId);
@@ -777,7 +809,7 @@ export class MockApiService extends ApiService {
       finished: false,
       questionId: question.questionId,
       text: question.text,
-      orderNo: state.currentQuestionOrderNo,
+      orderNo,
       totalQuestions: questions.length,
       timeLimitInSeconds: question.timeLimitInSeconds,
       points: question.points,
@@ -794,7 +826,7 @@ export class MockApiService extends ApiService {
   }
 
   override async submitAnswer(id: string, data: SubmitAnswerRequest): Promise<SubmitAnswerResult> {
-    const questions = this.sessionQuestionsMap.get(id);
+    const questions = this.resolveQuestions(id);
     const question = questions?.find((q) => q.questionId === data.questionId);
     if (!question) {
       throw new ApiError(404, 'Soru bulunamadı.');

@@ -64,6 +64,7 @@ export interface RelayGameState {
   pin: string;
   status: RelayGameStatus;
   currentQuestionIndex: number;
+  questionId?: string;
   question?: {
     id: string;
     text: string;
@@ -73,6 +74,7 @@ export interface RelayGameState {
     totalQuestions?: number;
     points?: number;
     jokersEnabled?: boolean;
+    correctOptionId?: string | null;
   };
   serverTime: number;
 }

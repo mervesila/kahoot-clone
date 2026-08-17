@@ -308,6 +308,7 @@ export class HostControlComponent {
       pin: host?.pinCode ?? '',
       status,
       currentQuestionIndex: Math.max(0, this.questionOrderNo() - 1),
+      questionId: question?.questionId,
       question: question
         ? {
             id: question.questionId,
@@ -321,6 +322,9 @@ export class HostControlComponent {
             totalQuestions: this.sessionQuestions().length,
             points: question.points,
             jokersEnabled: true,
+            correctOptionId: status === 'QUESTION'
+              ? (question.options.find((o) => o.isCorrect)?.optionId ?? null)
+              : undefined,
           }
         : undefined,
       serverTime: Date.now(),

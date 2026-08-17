@@ -761,6 +761,24 @@ export class MockApiService extends ApiService {
       avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
     });
 
+    const remoteParticipants = this.loadParticipants(announced.sessionId);
+    if (!remoteParticipants.some((p) => p.playerId === playerId)) {
+      remoteParticipants.push({
+        playerId,
+        playerName,
+        teamName: data.teamName?.trim() || null,
+        avatarEmoji: data.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
+        avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
+      });
+      this.saveParticipants(announced.sessionId, remoteParticipants);
+    }
+
+    this.relayDisconnects.push(
+      this.relay.connect(data.pinCode, false, (msg) =>
+        this.handleRelayMessage(announced.sessionId, data.pinCode, msg),
+      ),
+    );
+
     return {
       sessionId: announced.sessionId,
       pinCode: data.pinCode,
@@ -835,7 +853,22 @@ export class MockApiService extends ApiService {
     if (!correctOption) {
       throw new ApiError(500, 'Doğru cevap bulunamadı.');
     }
-    const selectedOption = question.options.find((o) => o.optionId === data.selectedOptionId);
+
+    const normalize = (v: unknown): string => String(v ?? '').trim();
+
+    let selectedOption = question.options.find(
+      (o) => normalize(o.optionId) === normalize(data.selectedOptionId),
+    );
+    if (!selectedOption) {
+      selectedOption = question.options.find(
+        (o) => normalize(o.text) === normalize(data.selectedOptionId),
+      );
+    }
+    if (!selectedOption) {
+      if (normalize(data.selectedOptionId) === normalize(correctOption.optionId)) {
+        selectedOption = correctOption;
+      }
+    }
     if (!selectedOption) {
       throw new ApiError(400, 'Geçersiz seçenek.');
     }

@@ -131,7 +131,7 @@ export class RelayService {
   private readonly accepts: RelayAccept[] = [];
 
   topicFor(pinCode: string): string {
-    return `tki-kahoot-${pinCode}`;
+    return `tki-quiz-${pinCode}`;
   }
 
   getAnnounced(pinCode: string): RelayAnnounce | null {
@@ -283,6 +283,7 @@ export class RelayService {
 
   async publish(pinCode: string, message: RelayMessage): Promise<void> {
     const topic = this.topicFor(pinCode);
+    console.log('[NTFY SENT]', topic, message);
     try {
       await fetch(`${HUB_HTTPS}/${topic}`, {
         method: 'POST',
@@ -382,6 +383,7 @@ export class RelayService {
         this.accepts.push(msg);
         break;
     }
+    console.log('[NTFY RECEIVED]', topic, msg);
     for (const handler of channel.handlers) {
       try {
         handler(msg);

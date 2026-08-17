@@ -136,6 +136,7 @@ export class HostLobbyComponent {
     if (environment.demo) {
       const relayDisconnect = this.relay.connect(stored.pinCode, false, (msg) => {
         if (msg.type === 'PLAYER_JOINED') {
+          console.log('[HOST-LOBBY] Received PLAYER_JOINED:', msg);
           this.upsertPlayer({
             playerId: String(msg.player.id),
             name: msg.player.name,

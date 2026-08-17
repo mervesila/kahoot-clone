@@ -107,7 +107,7 @@ export class JoinPageComponent {
    * üzerinden iletir. Herhangi bir backend API çağrısı yapılmaz.
    *
    * Akış:
-   *  1. tki-kahoot-pin-{PIN} kanalına WebSocket bağlan (duyuru beklemek için)
+   *  1. tki-quiz-{PIN} kanalına WebSocket bağlan (duyuru beklemek için)
    *  2. Host'tan announce mesajı gelene kadar bekle
    *  3. Duyuru geldiğinde sessionId'yi al
    *  4. { type: 'join', sessionId, playerId, playerName } POST et
@@ -134,6 +134,7 @@ export class JoinPageComponent {
       });
     }
 
+    console.log('[JOIN] Sending PLAYER_JOINED via relay, pin:', p.pin, 'sessionId:', announced.sessionId);
     await this.relay.publish(p.pin, {
       type: 'PLAYER_JOINED',
       player: {

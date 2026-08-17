@@ -263,6 +263,7 @@ export class MockApiService extends ApiService {
   }
 
   private handleRelayMessage(sessionId: string, pinCode: string, msg: RelayMessage): void {
+    console.log('[MOCK-API] handleRelayMessage:', msg.type, sessionId, msg);
     if (msg.type === 'request') {
       if (msg.pinCode === pinCode) {
         const session = this.sessions.get(sessionId);

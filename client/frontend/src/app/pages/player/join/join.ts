@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { AlertComponent } from '../../../shared/alert/alert';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { SessionService } from '../../../services/session.service';
-import { RelayService } from '../../../services/relay.service';
+import { getNtfyPublishUrl } from '../../../shared/ntfy-channel.util';
 import { DEFAULT_AVATAR } from '../../../data/avatars';
 
 @Component({
@@ -28,7 +28,6 @@ export class JoinPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sessions = inject(SessionService);
-  private readonly relay = inject(RelayService);
 
   readonly pinCode = signal('');
   readonly pinLocked = signal(false);
@@ -88,9 +87,8 @@ export class JoinPageComponent {
       avatar: DEFAULT_AVATAR,
     });
 
-    // ZORUNLU: ntfy.sh kanalına PLAYER_JOINED mesajını hemen gönder.
-    console.log('[JOIN] Sending PLAYER_JOINED via relay, pin:', pin, 'sessionId:', sessionId);
-    void this.relay.publish(pin, {
+    // ntfy.sh kanalına PLAYER_JOINED mesajını hemen gönder.
+    const payload = {
       type: 'PLAYER_JOINED',
       player: {
         id: Date.now(),
@@ -100,7 +98,17 @@ export class JoinPageComponent {
       teamName: null,
       avatarEmoji: DEFAULT_AVATAR.emoji,
       avatarColor: DEFAULT_AVATAR.color,
-    });
+    };
+
+    try {
+      await fetch(getNtfyPublishUrl(pin), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('[ntfy] Failed to publish PLAYER_JOINED', err);
+    }
 
     // Oyuncuyu bekleme ekranına al.
     await this.router.navigate(['/player/lobby']);

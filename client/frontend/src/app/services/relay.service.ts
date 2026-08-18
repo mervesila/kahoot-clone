@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
+import { getNtfyTopic } from '../shared/ntfy-channel.util';
 
 export interface RelayAnnounce {
   sessionId: string;
@@ -131,7 +132,7 @@ export class RelayService {
   private readonly accepts: RelayAccept[] = [];
 
   topicFor(pinCode: string): string {
-    return `tki-kahoot-${pinCode}`;
+    return getNtfyTopic(pinCode);
   }
 
   getAnnounced(pinCode: string): RelayAnnounce | null {
@@ -287,7 +288,7 @@ export class RelayService {
     try {
       await fetch(`${HUB_HTTPS}/${topic}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Cache: 'no' },
+        headers: { 'Content-Type': 'text/plain', Cache: 'no' },
         body: JSON.stringify(message),
       });
     } catch {

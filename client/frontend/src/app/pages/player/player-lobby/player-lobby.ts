@@ -11,6 +11,7 @@ import { GameHubService } from '../../../services/game-hub.service';
 import { RelayService } from '../../../services/relay.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
 import { GameFlowService } from '../../../services/game-flow.service';
+import { getNtfyPublishUrl } from '../../../shared/ntfy-channel.util';
 import { environment } from '../../../../environments/environment';
 import type { GameFinishedEvent } from '../../../models/types';
 
@@ -43,19 +44,24 @@ export class PlayerLobbyComponent {
     this.session.set(stored);
     this.audio.playMusic('lobby');
 
+    const safePin = String(stored.pinCode ?? '').trim();
+
     const goToGame = (): void => {
-      void this.router.navigate(['/player/game']);
+      this.ngZone.run(() => {
+        void this.router.navigate(['/player/game']);
+        this.cdr.detectChanges();
+      });
     };
 
     // Relay: announce/accept/state handler (session ID güncelleme)
     let relayDisconnect: (() => void) | null = null;
     if (environment.demo) {
-      relayDisconnect = this.relay.connect(stored.pinCode, false, (msg) => {
+      relayDisconnect = this.relay.connect(safePin, false, (msg) => {
         const current = this.sessions.loadPlayer();
         if (!current) {
           return;
         }
-        if (msg.type === 'announce' && msg.pinCode === stored.pinCode) {
+        if (msg.type === 'announce' && msg.pinCode === safePin) {
           this.sessions.savePlayer({
             ...current,
             sessionId: msg.sessionId,
@@ -71,15 +77,57 @@ export class PlayerLobbyComponent {
 
     // GameFlowService: GAME_STARTED dinle — anında yönlendir
     if (environment.demo) {
-      const unsub = this.gameFlow.listenForGameEvents(stored.pinCode, (payload) => {
+      const unsub = this.gameFlow.listenForGameEvents(safePin, (payload) => {
         if (payload['type'] === 'GAME_STARTED') {
-          this.ngZone.run(() => {
-            this.cdr.detectChanges();
-            goToGame();
-          });
+          goToGame();
         }
       });
       this.destroyRef.onDestroy(unsub);
+    }
+
+    // === 1sn Bağımsız Polling Fallback (Safari SSE yedekliliği) ===
+    // GameFlowService'in kendi pollingu另haric, bileşen kendi 1sn polling'ini çalıştırır.
+    // Böylece GameFlowService durdurulsa bile bu polling devam eder.
+    if (environment.demo && safePin) {
+      let since = Math.floor(Date.now() / 1000);
+      const ntfyBase = getNtfyPublishUrl(safePin);
+
+      const directPoll = setInterval(async () => {
+        try {
+          const url = `${ntfyBase}/json?poll=1&since=${since}`;
+          const res = await fetch(url);
+          const text = await res.text();
+          let latestTime = since;
+
+          const lines = text.split('\n').filter((l) => l.trim().length > 0);
+          for (const line of lines) {
+            try {
+              const parsed = JSON.parse(line) as Record<string, unknown>;
+              const parsedTime = parsed['time'] as number | undefined;
+              if (parsedTime && parsedTime > latestTime) {
+                latestTime = parsedTime;
+              }
+              let payload: Record<string, unknown> | null = null;
+              const msg = parsed['message'];
+              if (typeof msg === 'string' && msg.startsWith('{')) {
+                payload = JSON.parse(msg) as Record<string, unknown>;
+              } else if (typeof msg === 'object' && msg !== null) {
+                payload = msg as Record<string, unknown>;
+              } else if (parsed['type']) {
+                payload = parsed;
+              }
+              if (payload && payload['type'] === 'GAME_STARTED') {
+                clearInterval(directPoll);
+                goToGame();
+                return;
+              }
+            } catch { /* parse hataları yutulur */ }
+          }
+          since = latestTime + 1;
+        } catch { /* network hataları yutulur, tekrar denenir */ }
+      }, 1000);
+
+      this.destroyRef.onDestroy(() => clearInterval(directPoll));
     }
 
     // SignalR (non-demo) pathway
@@ -95,7 +143,7 @@ export class PlayerLobbyComponent {
 
     void this.hub.getConnection().catch(() => {});
 
-    // Polling: session durumunu kontrol et (fallback)
+    // Session state polling: durum kontrolü (fallback)
     const checkState = async (): Promise<void> => {
       const current = this.sessions.loadPlayer();
       if (!current) {

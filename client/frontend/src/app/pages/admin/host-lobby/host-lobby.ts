@@ -178,7 +178,8 @@ export class HostLobbyComponent {
 
     // Demo mode: GAME_STARTED mesajını ntfy kanalına yayınla (her durumda)
     if (environment.demo) {
-      this.gameFlow.publishGameStarted(host.pinCode, 0);
+      const safePin = String(host.pinCode ?? '').trim();
+      this.gameFlow.publishGameStarted(safePin, 0);
     }
 
     await this.router.navigate(['/admin/host', host.sessionId, 'control']);

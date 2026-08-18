@@ -31,13 +31,14 @@ export class GameFlowService implements OnDestroy {
    * Host tarafından: GAME_STARTED mesajını ntfy.sh kanalına POST et.
    */
   publishGameStarted(pin: string, currentQuestionIndex = 0): void {
+    const safePin = String(pin ?? '').trim();
     const payload = {
       type: 'GAME_STARTED',
       currentQuestionIndex,
       timestamp: Date.now(),
     };
 
-    fetch(getNtfyPublishUrl(pin), {
+    fetch(getNtfyPublishUrl(safePin), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
@@ -49,18 +50,19 @@ export class GameFlowService implements OnDestroy {
    * Mesaj geldiğinde callback çağrılır.
    */
   listenForGameEvents(pin: string, callback: GameEventCallback): () => void {
-    if (!this.callbacks.has(pin)) {
-      this.callbacks.set(pin, new Set());
-      this.startListening(pin);
+    const safePin = String(pin ?? '').trim();
+    if (!this.callbacks.has(safePin)) {
+      this.callbacks.set(safePin, new Set());
+      this.startListening(safePin);
     }
-    this.callbacks.get(pin)!.add(callback);
+    this.callbacks.get(safePin)!.add(callback);
 
     return () => {
-      const cbs = this.callbacks.get(pin);
+      const cbs = this.callbacks.get(safePin);
       cbs?.delete(callback);
       if (cbs?.size === 0) {
-        this.stopListening(pin);
-        this.callbacks.delete(pin);
+        this.stopListening(safePin);
+        this.callbacks.delete(safePin);
       }
     };
   }

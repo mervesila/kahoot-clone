@@ -70,6 +70,7 @@ export class GameFlowService implements OnDestroy {
       es: null as EventSource | null,
       poll: null as ReturnType<typeof setInterval> | null,
       since: Math.floor(Date.now() / 1000),
+      pollActive: false,
     };
     this.listeners.set(pin, state);
 
@@ -83,12 +84,15 @@ export class GameFlowService implements OnDestroy {
       };
 
       state.es.onerror = () => {
-        console.warn('[game-flow] SSE error, falling back to polling');
+        console.warn('[game-flow] SSE error, starting polling fallback');
         state.es?.close();
         state.es = null;
         this.ngZone.run(() => this.startPolling(pin, state));
       };
     });
+
+    // HTTP polling: her 1.5sn'de bir GAME_STARTED kontrolü (SSE yedekliliği)
+    this.startPolling(pin, state);
   }
 
   private stopListening(pin: string): void {
@@ -141,7 +145,11 @@ export class GameFlowService implements OnDestroy {
     }
   }
 
-  private startPolling(pin: string, state: { poll: ReturnType<typeof setInterval> | null; since: number }): void {
+  private startPolling(pin: string, state: { poll: ReturnType<typeof setInterval> | null; since: number; pollActive: boolean }): void {
+    if (state.pollActive) {
+      return;
+    }
+    state.pollActive = true;
     const publishBase = getNtfyPublishUrl(pin);
 
     state.poll = setInterval(async () => {

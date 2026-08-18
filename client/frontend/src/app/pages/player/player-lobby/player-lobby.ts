@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, NgZone, signal } from '@angular/core';
+import { Component, ChangeDetectorRef, DestroyRef, inject, NgZone, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AvatarComponent } from '../../../shared/avatar/avatar';
@@ -29,6 +29,7 @@ export class PlayerLobbyComponent {
   private readonly relay = inject(RelayService);
   private readonly gameFlow = inject(GameFlowService);
   private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly session = signal<PlayerSession | null>(null);
@@ -72,7 +73,10 @@ export class PlayerLobbyComponent {
     if (environment.demo) {
       const unsub = this.gameFlow.listenForGameEvents(stored.pinCode, (payload) => {
         if (payload['type'] === 'GAME_STARTED') {
-          this.ngZone.run(() => goToGame());
+          this.ngZone.run(() => {
+            this.cdr.detectChanges();
+            goToGame();
+          });
         }
       });
       this.destroyRef.onDestroy(unsub);

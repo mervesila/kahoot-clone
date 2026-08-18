@@ -167,21 +167,20 @@ export class HostLobbyComponent {
     this.starting.set(true);
     try {
       await this.api.startSession(host.sessionId);
-
-      // Demo mode: GAME_STARTED mesajını ntfy kanalına yayınla
-      if (environment.demo) {
-        this.gameFlow.publishGameStarted(host.pinCode, 0);
-      }
-
-      await this.router.navigate(['/admin/host', host.sessionId, 'control']);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 400) {
-        await this.router.navigate(['/admin/host', host.sessionId, 'control']);
+      if (!(err instanceof ApiError && err.status === 400)) {
+        this.error.set(err instanceof ApiError ? err.message : 'Oyun başlatılamadı.');
+        this.starting.set(false);
         return;
       }
-      this.error.set(err instanceof ApiError ? err.message : 'Oyun başlatılamadı.');
-    } finally {
-      this.starting.set(false);
+      // 400 = session zaten başladı, devam et
     }
+
+    // Demo mode: GAME_STARTED mesajını ntfy kanalına yayınla (her durumda)
+    if (environment.demo) {
+      this.gameFlow.publishGameStarted(host.pinCode, 0);
+    }
+
+    await this.router.navigate(['/admin/host', host.sessionId, 'control']);
   }
 }

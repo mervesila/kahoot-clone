@@ -26,8 +26,6 @@ import type {
 
 type Phase = 'connecting' | 'waiting' | 'question' | 'answered' | 'finished';
 
-const EXTRA_TIME_SECONDS = 15;
-
 @Component({
   selector: 'app-player-game',
   imports: [
@@ -59,7 +57,6 @@ export class PlayerGameComponent {
   readonly question = signal<CurrentQuestionDto | null>(null);
   readonly result = signal<SubmitAnswerResult | null>(null);
   readonly selectedOptionId = signal<string | null>(null);
-  readonly usedJokers = signal<string[]>([]);
   readonly duration = signal(30);
   readonly questionStartedAt = signal(0);
   readonly scoreboard = signal<ScoreboardDto | null>(null);
@@ -236,7 +233,6 @@ export class PlayerGameComponent {
       timeLimitInSeconds: event.timeLimitInSeconds,
       points: event.points,
       options: event.options,
-      jokersEnabled: event.jokersEnabled,
     };
   }
 
@@ -245,9 +241,6 @@ export class PlayerGameComponent {
     this.result.set(null);
     this.selectedOptionId.set(null);
     this.timedOut.set(false);
-    if (question.usedJokers) {
-      this.usedJokers.set(question.usedJokers);
-    }
     this.question.set(question);
     this.duration.set(question.timeLimitInSeconds);
     this.questionStartedAt.set(Date.now());
@@ -266,9 +259,6 @@ export class PlayerGameComponent {
     if (!current.questionId) {
       return;
     }
-    if (current.usedJokers) {
-      this.usedJokers.set(current.usedJokers);
-    }
     const sameQuestion = this.question()?.questionId === current.questionId;
 
     if (current.answered) {
@@ -282,7 +272,6 @@ export class PlayerGameComponent {
           scoreEarned: current.scoreEarned ?? 0,
           correctOptionId: current.correctOptionId ?? '',
           responseTimeInSeconds: 0,
-          usedJokers: current.usedJokers ?? [],
         });
         this.phase.set('answered');
         void this.loadScoreboard(currentSession.sessionId);
@@ -378,7 +367,6 @@ export class PlayerGameComponent {
       points: data.points ?? current?.points ?? 0,
       options: Array.isArray(data.options) ? data.options : [],
       correctOptionId: data.correctOptionId ?? null,
-      jokersEnabled: data.jokersEnabled ?? current?.jokersEnabled ?? true,
     };
     this.applyNewQuestion(question);
   }
@@ -426,7 +414,7 @@ export class PlayerGameComponent {
         responseTimeInSeconds: responseTime,
       });
     } catch {
-      answer = this.quiz.buildLocalResult(optionId, correctOptionId, q, responseTime, this.usedJokers());
+      answer = this.quiz.buildLocalResult(optionId, correctOptionId, q, responseTime);
       const totalScore = this.myScore() + answer.scoreEarned;
       void this.relay.publish(session.pinCode, {
         type: 'answer',
@@ -443,37 +431,6 @@ export class PlayerGameComponent {
     this.audio.playSfx(answer.isCorrect ? 'correct' : 'wrong');
     this.phase.set('answered');
     await this.loadScoreboard(session.sessionId);
-  }
-
-  async handleJoker(jokerType: string): Promise<void> {
-    const session = this.session();
-    if (!session || !this.question() || this.phase() !== 'question' || this.answered) {
-      return;
-    }
-    if (this.usedJokers().includes(jokerType)) {
-      return;
-    }
-
-    try {
-      await this.api.useJoker(
-        session.sessionId,
-        session.playerId,
-        this.question()!.questionId ?? '',
-        jokerType,
-      );
-      this.usedJokers.update((prev) => [...prev, jokerType]);
-
-      if (jokerType === 'ExtraTime') {
-        this.duration.update((prev) => prev + EXTRA_TIME_SECONDS);
-      }
-
-      if (jokerType === 'FiftyFifty') {
-        const refreshed = await this.api.getQuestion(session.sessionId, session.playerId);
-        this.question.set(refreshed);
-      }
-    } catch {
-      // Joker kullanılamazsa sessizce geç.
-    }
   }
 
   handleTimeout(): void {

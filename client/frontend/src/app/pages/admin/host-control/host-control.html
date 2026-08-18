@@ -151,19 +151,6 @@
                 }
               </ul>
             }
-
-            <h3 class="control-panel-title jokers-title">
-              Kullanılan Jokerler ({{ jokers().length }})
-            </h3>
-            @if (jokers().length === 0) {
-              <p class="control-muted">Henüz joker kullanılmadı.</p>
-            } @else {
-              <div class="flex gap-2 flex-wrap">
-                @for (joker of jokers(); track $index) {
-                  <span class="joker-chip">{{ jokerLabel(joker) }}</span>
-                }
-              </div>
-            }
           </section>
         </div>
       }

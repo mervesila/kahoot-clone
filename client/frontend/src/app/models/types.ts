@@ -40,8 +40,6 @@ export interface CurrentQuestionDto {
   isCorrect?: boolean | null;
   scoreEarned?: number | null;
   correctOptionId?: string | null;
-  usedJokers?: string[];
-  jokersEnabled?: boolean;
 }
 
 export interface SubmitAnswerResult {
@@ -50,7 +48,6 @@ export interface SubmitAnswerResult {
   scoreEarned: number;
   correctOptionId: string;
   responseTimeInSeconds: number;
-  usedJokers: string[];
 }
 
 export interface AuthResult {
@@ -214,7 +211,6 @@ export interface QuestionStartedEvent {
   questionId?: string;
   text?: string;
   options?: QuestionStartedOption[];
-  jokersEnabled?: boolean;
 }
 
 export interface AnswerSubmittedEvent {

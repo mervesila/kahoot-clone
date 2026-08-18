@@ -7,7 +7,6 @@ import type {
   AnswerSubmittedEvent,
   GameFinishedEvent,
   GameStartedEvent,
-  JokerUsedEvent,
   PlayerAvatarUpdatedEvent,
   PlayerJoinedEvent,
   QuestionStartedEvent,
@@ -35,7 +34,6 @@ export class GameHubService {
   readonly questionStarted$ = new Subject<QuestionStartedEvent>();
   readonly gameStateChanged$ = new Subject<QuestionStartedEvent>();
   readonly answerSubmitted$ = new Subject<AnswerSubmittedEvent>();
-  readonly jokerUsed$ = new Subject<JokerUsedEvent>();
   readonly gameFinished$ = new Subject<GameFinishedEvent>();
   readonly playerAvatarUpdated$ = new Subject<PlayerAvatarUpdatedEvent>();
 
@@ -108,7 +106,6 @@ export class GameHubService {
     connection.on('AnswerSubmitted', (event: AnswerSubmittedEvent) =>
       this.answerSubmitted$.next(event),
     );
-    connection.on('JokerUsed', (event: JokerUsedEvent) => this.jokerUsed$.next(event));
     connection.on('GameFinished', (event: GameFinishedEvent) => this.gameFinished$.next(event));
     connection.on('PlayerAvatarUpdated', (event: PlayerAvatarUpdatedEvent) =>
       this.playerAvatarUpdated$.next(event),

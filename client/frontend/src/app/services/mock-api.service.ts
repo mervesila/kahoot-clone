@@ -54,7 +54,6 @@ interface AnswerRecord {
   isCorrect: boolean;
   scoreEarned: number;
   correctOptionId: string;
-  usedJokers: string[];
 }
 
 const questionPool: Record<string, DemoQuestionSpec[]> = {
@@ -240,7 +239,6 @@ export class MockApiService extends ApiService {
   private readonly sessionQuestionsMap = new Map<string, SessionQuestionDto[]>();
   private readonly sessionStates = new Map<string, GameSessionStateDto>();
   private readonly answers = new Map<string, AnswerRecord>();
-  private readonly jokerUsages = new Map<string, Set<string>>();
   private readonly relayQuestionCache = new Map<string, SessionQuestionDto[]>();
   private readonly relayOrderNo = new Map<string, number>();
   private sessionCounter = 0;
@@ -281,14 +279,6 @@ export class MockApiService extends ApiService {
         isCorrect: msg.isCorrect,
         scoreEarned: msg.scoreEarned,
         newTotalScore: msg.newTotalScore,
-      });
-      return;
-    }
-    if (msg.type === 'joker' && msg.sessionId === sessionId) {
-      this.hub.jokerUsed$.next({
-        sessionId: msg.sessionId,
-        playerId: msg.playerId,
-        jokerType: msg.jokerType as 'FiftyFifty' | 'DoublePoints' | 'ExtraTime',
       });
       return;
     }
@@ -399,10 +389,6 @@ export class MockApiService extends ApiService {
   }
 
   private answerKey(sessionId: string, playerId: string, questionId: string): string {
-    return `${sessionId}__${playerId}__${questionId}`;
-  }
-
-  private jokerKey(sessionId: string, playerId: string, questionId: string): string {
     return `${sessionId}__${playerId}__${questionId}`;
   }
 
@@ -797,19 +783,8 @@ export class MockApiService extends ApiService {
     const question = questions.find((q) => q.orderNo === orderNo) ?? questions[0];
     const aKey = this.answerKey(id, playerId, question.questionId);
     const answer = this.answers.get(aKey);
-    const jKey = this.jokerKey(id, playerId, question.questionId);
-    const usedJokers = [...(this.jokerUsages.get(jKey) ?? [])];
 
-    let options = question.options.map((o) => ({ optionId: o.optionId, text: o.text }));
-    if (usedJokers.includes('FiftyFifty') && !answer) {
-      const correct = question.options.find((o) => o.isCorrect)!;
-      const wrongs = question.options.filter((o) => !o.isCorrect);
-      const keptWrong = wrongs[Math.floor(Math.random() * wrongs.length)];
-      options = [
-        { optionId: correct.optionId, text: correct.text },
-        { optionId: keptWrong.optionId, text: keptWrong.text },
-      ];
-    }
+    const options = question.options.map((o) => ({ optionId: o.optionId, text: o.text }));
 
     const result: CurrentQuestionDto = {
       answered: !!answer,
@@ -821,13 +796,11 @@ export class MockApiService extends ApiService {
       timeLimitInSeconds: question.timeLimitInSeconds,
       points: question.points,
       options,
-      jokersEnabled: true,
     };
     if (answer) {
       result.isCorrect = answer.isCorrect;
       result.scoreEarned = answer.scoreEarned;
       result.correctOptionId = answer.correctOptionId;
-      result.usedJokers = answer.usedJokers;
     }
     return result;
   }
@@ -875,23 +848,8 @@ export class MockApiService extends ApiService {
       isCorrect,
       secenekler: question.options.map((o) => ({ id: o.optionId, dogru: o.isCorrect })),
     });
-    const jKey = this.jokerKey(id, data.playerId, data.questionId);
-    const usedJokers = [...(this.jokerUsages.get(jKey) ?? [])];
 
-    let scoreEarned = 0;
-    if (isCorrect) {
-      let timeLimit = question.timeLimitInSeconds;
-      if (usedJokers.includes('ExtraTime')) {
-        timeLimit += 15;
-      }
-      const effectiveTime = Math.min(Math.max(data.responseTimeInSeconds, 0), timeLimit);
-      const timeFactor = 1.0 - (effectiveTime / timeLimit) * 0.5;
-      scoreEarned = Math.round(question.points * timeFactor);
-      if (usedJokers.includes('DoublePoints')) {
-        scoreEarned *= 2;
-      }
-      scoreEarned = Math.max(0, scoreEarned);
-    }
+    const scoreEarned = isCorrect ? 1000 : 0;
 
     const playerName = this.getPlayerName(id, data.playerId);
     const record: AnswerRecord = {
@@ -904,7 +862,6 @@ export class MockApiService extends ApiService {
       isCorrect,
       scoreEarned,
       correctOptionId: correctOption.optionId,
-      usedJokers,
     };
     this.answers.set(aKey, record);
 
@@ -936,38 +893,7 @@ export class MockApiService extends ApiService {
       scoreEarned,
       correctOptionId: correctOption.optionId,
       responseTimeInSeconds: data.responseTimeInSeconds,
-      usedJokers,
     };
-  }
-
-  override async useJoker(id: string, playerId: string, questionId: string, jokerType: string): Promise<void> {
-    const jKey = this.jokerKey(id, playerId, questionId);
-    const used = this.jokerUsages.get(jKey) ?? new Set<string>();
-    if (used.has(jokerType)) {
-      throw new ApiError(400, 'Bu joker zaten kullanıldı.');
-    }
-    const aKey = this.answerKey(id, playerId, questionId);
-    if (this.answers.has(aKey)) {
-      throw new ApiError(400, 'Bu soruya zaten cevap verildi.');
-    }
-    used.add(jokerType);
-    this.jokerUsages.set(jKey, used);
-
-    const playerName = this.getPlayerName(id, playerId);
-    this.hub.jokerUsed$.next({
-      sessionId: id,
-      playerId,
-      jokerType: jokerType as 'FiftyFifty' | 'DoublePoints' | 'ExtraTime',
-    });
-    const session = this.sessions.get(id);
-    if (session) {
-      void this.relay.publish(session.pinCode, {
-        type: 'joker',
-        sessionId: id,
-        playerId,
-        jokerType,
-      });
-    }
   }
 
   override async getScoreboard(sessionId: string): Promise<ScoreboardDto> {

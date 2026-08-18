@@ -290,14 +290,6 @@ export class ApiService {
     return this.post<SubmitAnswerResult>(`/api/player/game-sessions/${id}/answers`, data, false);
   }
 
-  useJoker(id: string, playerId: string, questionId: string, jokerType: string): Promise<void> {
-    return this.post<void>(
-      `/api/player/game-sessions/${id}/jokers`,
-      { playerId, questionId, jokerType },
-      false,
-    );
-  }
-
   getScoreboard(id: string): Promise<ScoreboardDto> {
     return this.get<ScoreboardDto>(`/api/player/game-sessions/${id}/scoreboard`, false);
   }

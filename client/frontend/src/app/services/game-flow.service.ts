@@ -91,7 +91,7 @@ export class GameFlowService implements OnDestroy {
       };
     });
 
-    // HTTP polling: her 1.5sn'de bir GAME_STARTED kontrolü (SSE yedekliliği)
+    // HTTP polling: her 1sn'de bir GAME_STARTED kontrolü (SSE yedekliliği)
     this.startPolling(pin, state);
   }
 
@@ -174,6 +174,6 @@ export class GameFlowService implements OnDestroy {
       } catch (e) {
         console.error('[game-flow] Polling failed', e);
       }
-    }, 1500);
+    }, 1000);
   }
 }

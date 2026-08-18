@@ -50,35 +50,6 @@
               />
             }
           </div>
-
-          @if (q.jokersEnabled !== false) {
-            <div class="joker-row">
-              <button
-                type="button"
-                class="btn btn-blue btn-sm"
-                [disabled]="usedJokers().includes('FiftyFifty')"
-                (click)="handleJoker('FiftyFifty')"
-              >
-                50/50
-              </button>
-              <button
-                type="button"
-                class="btn btn-blue btn-sm"
-                [disabled]="usedJokers().includes('DoublePoints')"
-                (click)="handleJoker('DoublePoints')"
-              >
-                Çift Puan (x2)
-              </button>
-              <button
-                type="button"
-                class="btn btn-blue btn-sm"
-                [disabled]="usedJokers().includes('ExtraTime')"
-                (click)="handleJoker('ExtraTime')"
-              >
-                Ekstra Süre (+15 sn)
-              </button>
-            </div>
-          }
         </div>
       }
 

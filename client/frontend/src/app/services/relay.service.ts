@@ -58,12 +58,6 @@ export interface RelayAnswer {
   newTotalScore: number;
 }
 
-export interface RelayJoker {
-  sessionId: string;
-  playerId: string;
-  jokerType: string;
-}
-
 export interface RelayGameOption {
   optionId: string;
   text: string;
@@ -85,7 +79,6 @@ export interface RelayGameState {
     orderNo?: number;
     totalQuestions?: number;
     points?: number;
-    jokersEnabled?: boolean;
     correctOptionId?: string | null;
   };
   serverTime: number;
@@ -100,7 +93,6 @@ export type RelayMessage =
   | ({ type: 'accept' } & RelayAccept)
   | ({ type: 'request' } & RelayRequest)
   | ({ type: 'answer' } & RelayAnswer)
-  | ({ type: 'joker' } & RelayJoker)
   | ({ type: 'game' } & RelayGameState);
 
 const HUB_HTTPS = environment.relayUrl;

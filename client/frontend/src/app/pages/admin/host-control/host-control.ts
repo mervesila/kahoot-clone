@@ -19,17 +19,10 @@ import { environment } from '../../../../environments/environment';
 import type {
   AnswerSubmittedEvent,
   GameFinishedEvent,
-  JokerUsedEvent,
   QuestionStartedEvent,
   ScoreboardDto,
   SessionQuestionDto,
 } from '../../../models/types';
-
-const JOKER_LABELS: Record<string, string> = {
-  FiftyFifty: '50/50',
-  DoublePoints: 'Çift Puan',
-  ExtraTime: '+15 sn',
-};
 
 const HOST_OPTION_CLASSES = ['host-opt-red', 'host-opt-blue', 'host-opt-yellow', 'host-opt-green'];
 
@@ -74,7 +67,6 @@ export class HostControlComponent {
   readonly questionOrderNo = signal(0);
   readonly timeLimit = signal(30);
   readonly liveAnswers = signal<LiveAnswer[]>([]);
-  readonly jokers = signal<string[]>([]);
   readonly answerRevealed = signal(false);
   readonly scoreboard = signal<ScoreboardDto | null>(null);
   readonly showScoreboard = signal(false);
@@ -198,15 +190,6 @@ export class HostControlComponent {
         void this.loadScoreboard(sessionId);
       });
 
-    this.hub.jokerUsed$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event: JokerUsedEvent) => {
-        if (event.sessionId === sessionId) {
-          this.jokers.update((prev) => [...prev, event.jokerType]);
-          this.cdr.detectChanges();
-        }
-      });
-
     this.hub.gameFinished$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event: GameFinishedEvent) => {
@@ -274,7 +257,6 @@ export class HostControlComponent {
     this.answerRevealed.set(false);
     this.questionOrderNo.set(orderNo);
     this.liveAnswers.set([]);
-    this.jokers.set([]);
     const question = this.sessionQuestions().find((q) => q.orderNo === orderNo);
     if (question) {
       this.timeLimit.set(question.timeLimitInSeconds);
@@ -324,7 +306,6 @@ export class HostControlComponent {
             orderNo: question.orderNo,
             totalQuestions: this.sessionQuestions().length,
             points: question.points,
-            jokersEnabled: true,
             correctOptionId: question.options.find((o) => o.isCorrect)?.optionId ?? null,
           }
         : undefined,
@@ -389,10 +370,6 @@ export class HostControlComponent {
 
   hostOptionClass(index: number): string {
     return HOST_OPTION_CLASSES[((index % 4) + 4) % 4];
-  }
-
-  jokerLabel(type: string): string {
-    return JOKER_LABELS[type] ?? type;
   }
 
   download(format: 'pdf' | 'excel'): void {

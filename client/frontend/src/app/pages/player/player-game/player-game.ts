@@ -13,6 +13,7 @@ import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
 import { RelayService, type RelayGameState } from '../../../services/relay.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
+import { QuizService } from '../../../services/quiz.service';
 import { sortOptionsById } from '../../../data/options';
 import type {
   AnswerSubmittedEvent,
@@ -48,6 +49,7 @@ export class PlayerGameComponent {
   private readonly hub = inject(GameHubService);
   private readonly sessions = inject(SessionService);
   private readonly relay = inject(RelayService);
+  private readonly quiz = inject(QuizService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -424,24 +426,15 @@ export class PlayerGameComponent {
         responseTimeInSeconds: responseTime,
       });
     } catch {
-      const isCorrect = this.computeIsCorrect(optionId, correctOptionId);
-      const scoreEarned = isCorrect ? this.computeLocalScore(q, responseTime) : 0;
-      answer = {
-        answerId: 'local-' + Date.now(),
-        isCorrect,
-        scoreEarned,
-        correctOptionId,
-        responseTimeInSeconds: responseTime,
-        usedJokers: this.usedJokers(),
-      };
-      const totalScore = this.myScore() + scoreEarned;
+      answer = this.quiz.buildLocalResult(optionId, correctOptionId, q, responseTime, this.usedJokers());
+      const totalScore = this.myScore() + answer.scoreEarned;
       void this.relay.publish(session.pinCode, {
         type: 'answer',
         sessionId: session.sessionId,
         playerId: session.playerId,
         playerName: session.playerName,
-        isCorrect,
-        scoreEarned,
+        isCorrect: answer.isCorrect,
+        scoreEarned: answer.scoreEarned,
         newTotalScore: totalScore,
       });
     }
@@ -490,55 +483,6 @@ export class PlayerGameComponent {
     this.answered = true;
     this.timedOut.set(true);
     this.phase.set('answered');
-  }
-
-  private computeIsCorrect(selectedOptionId: string, correctOptionId: string): boolean {
-    const normalize = (v: unknown): string => String(v ?? '').trim().toUpperCase();
-    const normSelected = normalize(selectedOptionId);
-    const normCorrect = normalize(correctOptionId);
-    if (!normCorrect) {
-      return false;
-    }
-    if (normSelected === normCorrect) {
-      return true;
-    }
-    const q = this.question();
-    if (!q) {
-      return false;
-    }
-    const sorted = sortOptionsById(q.options);
-    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
-    const selectedIndex = sorted.findIndex((o) => normalize(o.optionId) === normSelected);
-    const correctIndex = sorted.findIndex((o) => normalize(o.optionId) === normCorrect);
-    if (selectedIndex >= 0 && correctIndex >= 0 && selectedIndex === correctIndex) {
-      return true;
-    }
-    if (letters[selectedIndex] === normCorrect || letters[correctIndex] === normSelected) {
-      return true;
-    }
-    const selectedText = normalize(sorted[selectedIndex]?.text ?? '');
-    const correctText = normalize(sorted[correctIndex]?.text ?? '');
-    if (selectedText && correctText && selectedText === correctText) {
-      return true;
-    }
-    return false;
-  }
-
-  private computeLocalScore(q: CurrentQuestionDto | null, responseTime: number): number {
-    if (!q) {
-      return 0;
-    }
-    let timeLimit = q.timeLimitInSeconds;
-    if (this.usedJokers().includes('ExtraTime')) {
-      timeLimit += EXTRA_TIME_SECONDS;
-    }
-    const effectiveTime = Math.min(Math.max(responseTime, 0), timeLimit);
-    const timeFactor = 1.0 - (effectiveTime / timeLimit) * 0.5;
-    let score = Math.round(q.points * timeFactor);
-    if (this.usedJokers().includes('DoublePoints')) {
-      score *= 2;
-    }
-    return Math.max(0, score);
   }
 
   exit(): void {

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, NgZone, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AvatarComponent } from '../../../shared/avatar/avatar';
@@ -10,6 +10,7 @@ import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
 import { RelayService } from '../../../services/relay.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
+import { GameFlowService } from '../../../services/game-flow.service';
 import { environment } from '../../../../environments/environment';
 import type { GameFinishedEvent } from '../../../models/types';
 
@@ -26,6 +27,8 @@ export class PlayerLobbyComponent {
   private readonly hub = inject(GameHubService);
   private readonly audio = inject(AudioService);
   private readonly relay = inject(RelayService);
+  private readonly gameFlow = inject(GameFlowService);
+  private readonly ngZone = inject(NgZone);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly session = signal<PlayerSession | null>(null);
@@ -39,6 +42,11 @@ export class PlayerLobbyComponent {
     this.session.set(stored);
     this.audio.playMusic('lobby');
 
+    const goToGame = (): void => {
+      void this.router.navigate(['/player/game']);
+    };
+
+    // Relay: announce/accept/state handler (session ID güncelleme)
     let relayDisconnect: (() => void) | null = null;
     if (environment.demo) {
       relayDisconnect = this.relay.connect(stored.pinCode, false, (msg) => {
@@ -60,10 +68,17 @@ export class PlayerLobbyComponent {
       });
     }
 
-    const goToGame = (): void => {
-      void this.router.navigate(['/player/game']);
-    };
+    // GameFlowService: GAME_STARTED dinle — anında yönlendir
+    if (environment.demo) {
+      const unsub = this.gameFlow.listenForGameEvents(stored.pinCode, (payload) => {
+        if (payload['type'] === 'GAME_STARTED') {
+          this.ngZone.run(() => goToGame());
+        }
+      });
+      this.destroyRef.onDestroy(unsub);
+    }
 
+    // SignalR (non-demo) pathway
     this.hub.gameStarted$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => goToGame());
     this.hub.questionStarted$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => goToGame());
     this.hub.gameFinished$
@@ -76,6 +91,7 @@ export class PlayerLobbyComponent {
 
     void this.hub.getConnection().catch(() => {});
 
+    // Polling: session durumunu kontrol et (fallback)
     const checkState = async (): Promise<void> => {
       const current = this.sessions.loadPlayer();
       if (!current) {

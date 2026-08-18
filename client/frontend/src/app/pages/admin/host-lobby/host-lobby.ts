@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, computed, DestroyRef, inject, NgZone, OnDestroy, signal } from '@angular/core';
+import { Component, ChangeDetectorRef, computed, DestroyRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,24 +11,16 @@ import { ApiError, ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
 import { GameHubService } from '../../../services/game-hub.service';
 import { SessionService, type HostSession } from '../../../services/session.service';
-import { RelayService } from '../../../services/relay.service';
+import { LobbyService, type LobbyPlayer } from '../../../services/lobby.service';
+import { GameFlowService } from '../../../services/game-flow.service';
 import { DEFAULT_AVATAR } from '../../../data/avatars';
 import { environment } from '../../../../environments/environment';
-import { getNtfySseUrl, getNtfyPublishUrl } from '../../../shared/ntfy-channel.util';
 import type {
   PlayerAvatarUpdatedEvent,
   PlayerJoinedEvent,
   RoomPlayersUpdatedEvent,
   SessionParticipantDto,
 } from '../../../models/types';
-
-interface LobbyPlayer {
-  playerId: string;
-  name: string;
-  teamName: string | null;
-  emoji: string;
-  color: string;
-}
 
 @Component({
   selector: 'app-host-lobby',
@@ -44,26 +36,22 @@ interface LobbyPlayer {
   templateUrl: './host-lobby.html',
   styleUrl: './host-lobby.scss',
 })
-export class HostLobbyComponent implements OnDestroy {
+export class HostLobbyComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
   private readonly audio = inject(AudioService);
   private readonly hub = inject(GameHubService);
   private readonly sessions = inject(SessionService);
-  private readonly relay = inject(RelayService);
+  private readonly lobbyService = inject(LobbyService);
+  private readonly gameFlow = inject(GameFlowService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly ngZone = inject(NgZone);
 
   readonly host = signal<HostSession | null>(null);
   readonly players = signal<LobbyPlayer[]>([]);
   readonly error = signal('');
   readonly starting = signal(false);
-
-  private eventSource: EventSource | null = null;
-  private pollFallbackHandle: ReturnType<typeof setInterval> | null = null;
-  private pollSince = Math.floor(Date.now() / 1000);
 
   readonly qrJoinUrl = computed(() => {
     const host = this.host();
@@ -89,6 +77,7 @@ export class HostLobbyComponent implements OnDestroy {
     this.host.set(stored);
     this.audio.playMusic('lobby');
 
+    // SignalR (non-demo) pathway
     this.hub.playerJoined$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event: PlayerJoinedEvent) => {
@@ -132,127 +121,17 @@ export class HostLobbyComponent implements OnDestroy {
         .catch(() => this.error.set('Canlı sunucuya bağlanılamadı.'));
     }
 
+    // Demo mode: LobbyService SSE/polling ile katılımcıları dinle
     if (environment.demo) {
-      this.startListening(stored.pinCode);
+      this.lobbyService.startListening(stored.pinCode);
+      const unsub = this.lobbyService.onPlayersUpdate((players) => {
+        this.players.set(players);
+        this.cdr.detectChanges();
+      });
+      this.destroyRef.onDestroy(unsub);
     }
 
     this.destroyRef.onDestroy(() => this.audio.stopMusic());
-  }
-
-  ngOnDestroy(): void {
-    this.eventSource?.close();
-    this.eventSource = null;
-    if (this.pollFallbackHandle) {
-      clearInterval(this.pollFallbackHandle);
-      this.pollFallbackHandle = null;
-    }
-  }
-
-  private startListening(pin: string): void {
-    const sseUrl = getNtfySseUrl(pin);
-
-    // EventSource is created OUTSIDE Angular's zone to avoid excessive
-    // change-detection churn; each handler re-enters the zone explicitly.
-    this.ngZone.runOutsideAngular(() => {
-      this.eventSource = new EventSource(sseUrl);
-
-      this.eventSource.onmessage = (event: MessageEvent) => {
-        this.handleNtfyMessage(event.data, pin);
-      };
-
-      this.eventSource.onerror = () => {
-        console.warn('[ntfy] SSE error, falling back to polling');
-        this.eventSource?.close();
-        this.eventSource = null;
-        this.ngZone.run(() => this.startPollingFallback(pin));
-      };
-    });
-  }
-
-  private handleNtfyMessage(rawEventData: string, pin: string): void {
-    try {
-      // Strategy 1: ntfy SSE envelope — { id, time, event, topic, message, ... }
-      // Strategy 2: raw JSON payload (message IS the payload)
-      // Strategy 3: message is a JSON string that needs double-parse
-      let payload: Record<string, unknown> | null = null;
-
-      try {
-        const envelope = JSON.parse(rawEventData) as Record<string, unknown>;
-        const msg = envelope['message'];
-        if (typeof msg === 'string' && msg.startsWith('{')) {
-          payload = JSON.parse(msg) as Record<string, unknown>;
-        } else if (typeof msg === 'object' && msg !== null) {
-          payload = msg as Record<string, unknown>;
-        } else if (envelope['type']) {
-          payload = envelope;
-        }
-      } catch {
-        // rawEventData is the payload directly
-        try {
-          payload = JSON.parse(rawEventData) as Record<string, unknown>;
-        } catch {
-          return;
-        }
-      }
-
-      if (!payload || payload['type'] !== 'PLAYER_JOINED') {
-        return;
-      }
-
-      const player = payload['player'] as { id?: number | string; name?: string } | undefined;
-      if (!player) {
-        return;
-      }
-
-      // Re-enter Angular's zone so change detection actually runs
-      this.ngZone.run(() => {
-        this.upsertPlayer({
-          playerId: String(player.id ?? Date.now()),
-          name: player.name ?? 'Oyuncu',
-          teamName: (payload!['teamName'] as string | null) ?? null,
-          emoji: String(payload!['avatarEmoji'] ?? '').trim() || DEFAULT_AVATAR.emoji,
-          color: String(payload!['avatarColor'] ?? '').trim() || DEFAULT_AVATAR.color,
-        });
-        this.cdr.detectChanges();
-
-        // Telefonun kullanacağı sessionId'yi otomatik olarak kabul et
-        void this.relay.publish(pin, {
-          type: 'accept',
-          sessionId: String(payload!['sessionId'] ?? ''),
-          playerName: player.name ?? 'Oyuncu',
-        });
-      });
-    } catch (e) {
-      console.error('[ntfy] Failed to parse incoming message', rawEventData, e);
-    }
-  }
-
-  private startPollingFallback(pin: string): void {
-    const publishBase = getNtfyPublishUrl(pin);
-
-    this.pollFallbackHandle = setInterval(async () => {
-      try {
-        const pollUrl = `${publishBase}/json?poll=1&since=${this.pollSince}`;
-        const res = await fetch(pollUrl);
-        const text = await res.text();
-        let latestTime = this.pollSince;
-        text
-          .split('\n')
-          .filter((line) => line.trim().length > 0)
-          .forEach((line) => {
-            try {
-              const parsed = JSON.parse(line) as { time?: number };
-              if (parsed.time && parsed.time > latestTime) {
-                latestTime = parsed.time;
-              }
-            } catch { /* ignore */ }
-            this.handleNtfyMessage(line, pin);
-          });
-        this.pollSince = latestTime + 1;
-      } catch (e) {
-        console.error('[ntfy] Polling fallback failed', e);
-      }
-    }, 1500);
   }
 
   private upsertPlayer(player: LobbyPlayer): void {
@@ -288,6 +167,12 @@ export class HostLobbyComponent implements OnDestroy {
     this.starting.set(true);
     try {
       await this.api.startSession(host.sessionId);
+
+      // Demo mode: GAME_STARTED mesajını ntfy kanalına yayınla
+      if (environment.demo) {
+        this.gameFlow.publishGameStarted(host.pinCode, 0);
+      }
+
       await this.router.navigate(['/admin/host', host.sessionId, 'control']);
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {

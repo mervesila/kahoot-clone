@@ -325,6 +325,17 @@ export class MockApiService extends ApiService {
         });
         return;
       }
+      // Oturum bu cihazda yoksa oluştur (host-lobby.getParticipants çalışsın)
+      if (!this.sessions.has(targetSessionId)) {
+        const hostSession = this.sessions.values().next().value;
+        this.sessions.set(targetSessionId, {
+          quizId: hostSession?.quizId ?? '',
+          quizTitle: hostSession?.quizTitle ?? 'Sınav',
+          pinCode,
+          isTeamMode: hostSession?.isTeamMode ?? false,
+        });
+        this.persist();
+      }
       const participants = this.loadParticipants(targetSessionId);
       const normalized = msg.player.name.toLocaleLowerCase('tr-TR');
       if (participants.some((p) => p.playerName.toLocaleLowerCase('tr-TR') === normalized)) {

@@ -29,14 +29,12 @@ export class JoinPageComponent {
   private readonly router = inject(Router);
   private readonly sessions = inject(SessionService);
   private readonly relay = inject(RelayService);
-  private readonly destroyRef = inject(DestroyRef);
 
   readonly pinCode = signal('');
   readonly pinLocked = signal(false);
   readonly fullName = signal('');
   readonly error = signal('');
 
-  private relayDisconnect: (() => void) | null = null;
   private joined = false;
 
   constructor() {
@@ -74,13 +72,13 @@ export class JoinPageComponent {
       return;
     }
 
-    const [firstName, ...rest] = name.split(/\s+/);
     const playerId = `oyuncu-${Math.random().toString(36).slice(2, 10)}`;
+    const sessionId = `relay-${pin}-${playerId}`;
     this.joined = true;
 
-    // Optimistik katılım: anında lobidenekin.
+    // Optimistik katılım: anında lobide beklemeye başla.
     this.sessions.savePlayer({
-      sessionId: `relay-${pin}`,
+      sessionId,
       pinCode: pin,
       quizTitle: 'Sınava katılıyorsun…',
       playerId,
@@ -90,84 +88,21 @@ export class JoinPageComponent {
       avatar: DEFAULT_AVATAR,
     });
 
-    await this.router.navigate(['/player/lobby']);
-
-    // Arka planda ntfy.sh rölesi üzerinden PLAYER_JOINED mesajı yayınla.
-    void this.joinViaRelay({
-      pin,
-      firstName,
-      lastName: rest.join(' '),
-      playerId,
-      name,
-    });
-  }
-
-  /**
-   * Oyuncunun katılımını tamamen istemci tarafında ntfy.sh rölesi
-   * üzerinden iletir. Herhangi bir backend API çağrısı yapılmaz.
-   *
-   * Akış:
-   *  1. tki-quiz-{PIN} kanalına WebSocket bağlan (duyuru beklemek için)
-   *  2. Host'tan announce mesajı gelene kadar bekle
-   *  3. Duyuru geldiğinde sessionId'yi al
-   *  4. { type: 'join', sessionId, playerId, playerName } POST et
-   *  5. Temizlik: disconnect
-   */
-  private async joinViaRelay(p: {
-    pin: string;
-    firstName: string;
-    lastName: string;
-    playerId: string;
-    name: string;
-  }): Promise<void> {
-    const announced = await this.waitForAnnounce(p.pin);
-    if (!announced) {
-      return; // Host çevrimdışı; oyuncu lobide kalmaya devam eder.
-    }
-
-    const stored = this.sessions.loadPlayer();
-    if (stored && stored.playerId === p.playerId) {
-      this.sessions.savePlayer({
-        ...stored,
-        sessionId: announced.sessionId,
-        quizTitle: announced.quizTitle,
-      });
-    }
-
-    console.log('[JOIN] Sending PLAYER_JOINED via relay, pin:', p.pin, 'sessionId:', announced.sessionId);
-    await this.relay.publish(p.pin, {
+    // ZORUNLU: ntfy.sh kanalına PLAYER_JOINED mesajını hemen gönder.
+    console.log('[JOIN] Sending PLAYER_JOINED via relay, pin:', pin, 'sessionId:', sessionId);
+    void this.relay.publish(pin, {
       type: 'PLAYER_JOINED',
       player: {
         id: Date.now(),
-        name: p.name,
+        name,
       },
-      sessionId: announced.sessionId,
+      sessionId,
       teamName: null,
       avatarEmoji: DEFAULT_AVATAR.emoji,
       avatarColor: DEFAULT_AVATAR.color,
     });
-  }
 
-  private waitForAnnounce(pin: string): Promise<RelayService['announced'] extends Map<string, infer V> ? V : never> {
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        this.relayDisconnect?.();
-        this.relayDisconnect = null;
-        resolve(null as never);
-      }, 15000);
-
-      this.relayDisconnect = this.relay.connect(pin, false, (msg) => {
-        if (msg.type === 'announce' && msg.pinCode === pin) {
-          clearTimeout(timeout);
-          this.relayDisconnect?.();
-          this.relayDisconnect = null;
-          resolve(msg as never);
-        }
-      });
-      this.destroyRef.onDestroy(() => {
-        clearTimeout(timeout);
-        this.relayDisconnect?.();
-      });
-    });
+    // Oyuncuyu bekleme ekranına al.
+    await this.router.navigate(['/player/lobby']);
   }
 }

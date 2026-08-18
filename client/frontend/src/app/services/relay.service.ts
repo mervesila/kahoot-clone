@@ -131,7 +131,7 @@ export class RelayService {
   private readonly accepts: RelayAccept[] = [];
 
   topicFor(pinCode: string): string {
-    return `tki-quiz-${pinCode}`;
+    return `tki-kahoot-${pinCode}`;
   }
 
   getAnnounced(pinCode: string): RelayAnnounce | null {
@@ -292,6 +292,36 @@ export class RelayService {
       });
     } catch {
       // relay ulaşılamıyorsa sessizce geç (yerel akış çalışmaya devam eder)
+    }
+  }
+
+  async pollMessages(pinCode: string, since: number = 0): Promise<Array<{ id: number; message: RelayMessage }>> {
+    const topic = this.topicFor(pinCode);
+    const url = `${HUB_HTTPS}/${topic}/json?poll=1&since=${since}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        return [];
+      }
+      const text = await res.text();
+      const lines = text.trim().split('\n').filter((l) => l.trim());
+      const messages: Array<{ id: number; message: RelayMessage }> = [];
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line) as { id?: string; message?: string };
+          if (entry.message) {
+            const msg = JSON.parse(entry.message) as RelayMessage;
+            if (msg && typeof msg.type === 'string') {
+              messages.push({ id: Number(entry.id) || 0, message: msg });
+            }
+          }
+        } catch {
+          // bozuk satır atla
+        }
+      }
+      return messages;
+    } catch {
+      return [];
     }
   }
 

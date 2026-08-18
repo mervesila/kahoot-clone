@@ -126,39 +126,42 @@ export class HostLobbyComponent {
         .catch(() => this.error.set('Canlı sunucuya bağlanılamadı.'));
     }
 
-    void this.api
-      .getParticipants(sessionId)
-      .then((list) => {
-        this.players.set(list.map((p) => this.toLobbyPlayer(p)));
-      })
-      .catch(() => undefined);
-
     if (environment.demo) {
-      const relayDisconnect = this.relay.connect(stored.pinCode, false, (msg) => {
-        if (msg.type === 'PLAYER_JOINED') {
-          console.log('[HOST-LOBBY] Received PLAYER_JOINED:', msg);
-          this.upsertPlayer({
-            playerId: String(msg.player.id),
-            name: msg.player.name,
-            teamName: msg.teamName ?? null,
-            emoji: msg.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
-            color: msg.avatarColor?.trim() || DEFAULT_AVATAR.color,
-          });
-          this.cdr.detectChanges();
+      // Host lobi ekranı ntfy.sh kanalını HTTP polling ile dinler.
+      // PLAYER_JOINED mesajı geldiğinde oyuncuyu listeye ekler + accept gönderir.
+      let lastSeenId = 0;
+      const poll = setInterval(async () => {
+        try {
+          const messages = await this.relay.pollMessages(stored.pinCode, lastSeenId);
+          for (const { id, message: msg } of messages) {
+            if (id > lastSeenId) {
+              lastSeenId = id;
+            }
+            if (msg.type === 'PLAYER_JOINED') {
+              console.log('[HOST-LOBBY] Received PLAYER_JOINED:', msg);
+
+              // Oyuncuyu listeye ekle
+              this.upsertPlayer({
+                playerId: String(msg.player.id),
+                name: msg.player.name,
+                teamName: msg.teamName ?? null,
+                emoji: msg.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
+                color: msg.avatarColor?.trim() || DEFAULT_AVATAR.color,
+              });
+              this.cdr.detectChanges();
+
+              // Telefonun kullanacağı sessionId'yi otomatik olarak kabul et
+              void this.relay.publish(stored.pinCode, {
+                type: 'accept',
+                sessionId: msg.sessionId ?? '',
+                playerName: msg.player.name,
+              });
+            }
+          }
+        } catch {
+          // polling hatalarını yut
         }
-      });
-      this.destroyRef.onDestroy(() => relayDisconnect());
-    }
-
-    if (environment.demo) {
-      const poll = setInterval(() => {
-        void this.api
-          .getParticipants(sessionId)
-          .then((list) => {
-            this.players.set(list.map((p) => this.toLobbyPlayer(p)));
-          })
-          .catch(() => undefined);
-      }, 2000);
+      }, 1000);
       this.destroyRef.onDestroy(() => clearInterval(poll));
     }
 

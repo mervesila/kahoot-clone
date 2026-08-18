@@ -63,6 +63,7 @@ export class HostLobbyComponent implements OnDestroy {
 
   private eventSource: EventSource | null = null;
   private pollFallbackHandle: ReturnType<typeof setInterval> | null = null;
+  private pollSince = Math.floor(Date.now() / 1000);
 
   readonly qrJoinUrl = computed(() => {
     const host = this.host();
@@ -170,64 +171,88 @@ export class HostLobbyComponent implements OnDestroy {
 
   private handleNtfyMessage(rawEventData: string, pin: string): void {
     try {
-      // ntfy's SSE envelope: { id, time, event, topic, message, ... }
-      const envelope = JSON.parse(rawEventData) as { message?: string };
-      if (!envelope.message) {
+      // Strategy 1: ntfy SSE envelope — { id, time, event, topic, message, ... }
+      // Strategy 2: raw JSON payload (message IS the payload)
+      // Strategy 3: message is a JSON string that needs double-parse
+      let payload: Record<string, unknown> | null = null;
+
+      try {
+        const envelope = JSON.parse(rawEventData) as Record<string, unknown>;
+        const msg = envelope['message'];
+        if (typeof msg === 'string' && msg.startsWith('{')) {
+          payload = JSON.parse(msg) as Record<string, unknown>;
+        } else if (typeof msg === 'object' && msg !== null) {
+          payload = msg as Record<string, unknown>;
+        } else if (envelope['type']) {
+          payload = envelope;
+        }
+      } catch {
+        // rawEventData is the payload directly
+        try {
+          payload = JSON.parse(rawEventData) as Record<string, unknown>;
+        } catch {
+          return;
+        }
+      }
+
+      if (!payload || payload['type'] !== 'PLAYER_JOINED') {
         return;
       }
 
-      // The actual payload we sent is a JSON STRING inside .message
-      const payload = JSON.parse(envelope.message) as {
-        type?: string;
-        player?: { id: number | string; name: string };
-        sessionId?: string;
-        teamName?: string | null;
-        avatarEmoji?: string;
-        avatarColor?: string;
-      };
-
-      if (payload.type === 'PLAYER_JOINED' && payload.player) {
-        // Re-enter Angular's zone so change detection actually runs
-        this.ngZone.run(() => {
-          this.upsertPlayer({
-            playerId: String(payload.player!.id),
-            name: payload.player!.name,
-            teamName: payload.teamName ?? null,
-            emoji: payload.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
-            color: payload.avatarColor?.trim() || DEFAULT_AVATAR.color,
-          });
-          this.cdr.detectChanges();
-
-          // Telefonun kullanacağı sessionId'yi otomatik olarak kabul et
-          void this.relay.publish(pin, {
-            type: 'accept',
-            sessionId: payload.sessionId ?? '',
-            playerName: payload.player!.name,
-          });
-        });
+      const player = payload['player'] as { id?: number | string; name?: string } | undefined;
+      if (!player) {
+        return;
       }
+
+      // Re-enter Angular's zone so change detection actually runs
+      this.ngZone.run(() => {
+        this.upsertPlayer({
+          playerId: String(player.id ?? Date.now()),
+          name: player.name ?? 'Oyuncu',
+          teamName: (payload!['teamName'] as string | null) ?? null,
+          emoji: String(payload!['avatarEmoji'] ?? '').trim() || DEFAULT_AVATAR.emoji,
+          color: String(payload!['avatarColor'] ?? '').trim() || DEFAULT_AVATAR.color,
+        });
+        this.cdr.detectChanges();
+
+        // Telefonun kullanacağı sessionId'yi otomatik olarak kabul et
+        void this.relay.publish(pin, {
+          type: 'accept',
+          sessionId: String(payload!['sessionId'] ?? ''),
+          playerName: player.name ?? 'Oyuncu',
+        });
+      });
     } catch (e) {
       console.error('[ntfy] Failed to parse incoming message', rawEventData, e);
     }
   }
 
   private startPollingFallback(pin: string): void {
-    const since = Math.floor(Date.now() / 1000);
     const publishBase = getNtfyPublishUrl(pin);
-    const pollUrl = `${publishBase}/json?poll=1&since=${since}`;
 
     this.pollFallbackHandle = setInterval(async () => {
       try {
+        const pollUrl = `${publishBase}/json?poll=1&since=${this.pollSince}`;
         const res = await fetch(pollUrl);
         const text = await res.text();
+        let latestTime = this.pollSince;
         text
           .split('\n')
           .filter((line) => line.trim().length > 0)
-          .forEach((line) => this.handleNtfyMessage(line, pin));
+          .forEach((line) => {
+            try {
+              const parsed = JSON.parse(line) as { time?: number };
+              if (parsed.time && parsed.time > latestTime) {
+                latestTime = parsed.time;
+              }
+            } catch { /* ignore */ }
+            this.handleNtfyMessage(line, pin);
+          });
+        this.pollSince = latestTime + 1;
       } catch (e) {
         console.error('[ntfy] Polling fallback failed', e);
       }
-    }, 2000);
+    }, 1500);
   }
 
   private upsertPlayer(player: LobbyPlayer): void {

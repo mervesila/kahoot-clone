@@ -87,7 +87,7 @@ export class JoinPageComponent {
       avatar: DEFAULT_AVATAR,
     });
 
-    // ntfy.sh kanalına PLAYER_JOINED mesajını hemen gönder.
+    // ntfy.sh kanalına PLAYER_JOINED mesajını hemen gönder (arka plan, bekleme yok).
     const payload = {
       type: 'PLAYER_JOINED',
       player: {
@@ -100,17 +100,13 @@ export class JoinPageComponent {
       avatarColor: DEFAULT_AVATAR.color,
     };
 
-    try {
-      await fetch(getNtfyPublishUrl(pin), {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
-      console.error('[ntfy] Failed to publish PLAYER_JOINED', err);
-    }
+    fetch(getNtfyPublishUrl(pin), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+    }).catch((err) => console.error('[ntfy] Failed to publish PLAYER_JOINED', err));
 
-    // Oyuncuyu bekleme ekranına al.
+    // Oyuncuyu hemen bekleme ekranına al — POST sonucunu bekleme.
     await this.router.navigate(['/player/lobby']);
   }
 }

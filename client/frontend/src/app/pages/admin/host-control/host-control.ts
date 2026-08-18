@@ -325,9 +325,7 @@ export class HostControlComponent {
             totalQuestions: this.sessionQuestions().length,
             points: question.points,
             jokersEnabled: true,
-            correctOptionId: status === 'QUESTION'
-              ? (question.options.find((o) => o.isCorrect)?.optionId ?? null)
-              : undefined,
+            correctOptionId: question.options.find((o) => o.isCorrect)?.optionId ?? null,
           }
         : undefined,
       serverTime: Date.now(),

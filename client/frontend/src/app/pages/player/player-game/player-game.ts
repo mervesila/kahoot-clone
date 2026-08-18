@@ -375,6 +375,7 @@ export class PlayerGameComponent {
       timeLimitInSeconds: data.duration ?? current?.timeLimitInSeconds ?? 30,
       points: data.points ?? current?.points ?? 0,
       options: Array.isArray(data.options) ? data.options : [],
+      correctOptionId: data.correctOptionId ?? null,
       jokersEnabled: data.jokersEnabled ?? current?.jokersEnabled ?? true,
     };
     this.applyNewQuestion(question);

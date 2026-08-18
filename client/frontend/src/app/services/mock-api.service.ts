@@ -295,21 +295,33 @@ export class MockApiService extends ApiService {
     if (msg.type === 'game' && msg.sessionId) {
       this.relayOrderNo.set(msg.sessionId, msg.currentQuestionIndex + 1);
       if (msg.question && !this.sessionQuestionsMap.has(msg.sessionId)) {
+        // correctOptionId sadece QUESTION durumunda gönderilir; LEADERBOARD/FINISHED
+        // durumlarında undefined olur. Bu durumda mevcut cache'i bozma — sadece orderNo'yu güncelle.
         const correctId = msg.question.correctOptionId;
-        const options = (msg.question.options ?? []).map((o) => ({
-          optionId: o.optionId,
-          text: o.text,
-          isCorrect: correctId ? o.optionId === correctId : false,
-        }));
-        this.relayQuestionCache.set(msg.sessionId, [{
-          questionId: msg.question.id ?? msg.questionId ?? '',
-          text: msg.question.text,
-          categoryName: '',
-          orderNo: msg.currentQuestionIndex + 1,
-          timeLimitInSeconds: msg.question.duration,
-          points: msg.question.points ?? 1000,
-          options,
-        }]);
+        const mevcutSoru = this.relayQuestionCache.get(msg.sessionId)?.[0];
+        if (correctId && (!mevcutSoru || mevcutSoru.questionId !== (msg.question.id ?? msg.questionId ?? ''))) {
+          // Yeni soru veya correctOptionId mevcut — cache'i yeniden oluştur
+          console.log('[RELAY-CACHE] Yeni soru cache\'leniyor, correctOptionId:', correctId);
+          const options = (msg.question.options ?? []).map((o) => ({
+            optionId: o.optionId,
+            text: o.text,
+            isCorrect: o.optionId === correctId,
+          }));
+          this.relayQuestionCache.set(msg.sessionId, [{
+            questionId: msg.question.id ?? msg.questionId ?? '',
+            text: msg.question.text,
+            categoryName: '',
+            orderNo: msg.currentQuestionIndex + 1,
+            timeLimitInSeconds: msg.question.duration,
+            points: msg.question.points ?? 1000,
+            options,
+          }]);
+        } else if (!correctId && mevcutSoru) {
+          // correctOptionId yok (LEADERBOARD snapshot'ı) — mevcut isCorrect bayraklarını koru,
+          // sadece orderNo'yu güncelle
+          console.log('[RELAY-CACHE] LEADERBOARD snapshot\'ı — mevcut isCorrect korunuyor');
+          mevcutSoru.orderNo = msg.currentQuestionIndex + 1;
+        }
       }
       return;
     }
@@ -939,6 +951,14 @@ export class MockApiService extends ApiService {
     }
 
     const isCorrect = selectedOption.isCorrect;
+    console.log('[CEVAP-KONTROL]', {
+      soruId: data.questionId,
+      secilenOptionId: data.selectedOptionId,
+      bulunanSecenek: selectedOption.optionId,
+      dogruOptionId: correctOption.optionId,
+      isCorrect,
+      secenekler: question.options.map((o) => ({ id: o.optionId, dogru: o.isCorrect })),
+    });
     const jKey = this.jokerKey(id, data.playerId, data.questionId);
     const usedJokers = [...(this.jokerUsages.get(jKey) ?? [])];
 

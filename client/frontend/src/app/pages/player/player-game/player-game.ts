@@ -411,21 +411,45 @@ export class PlayerGameComponent {
       this.duration(),
     );
 
+    const q = this.question();
+    const correctOptionId = q?.correctOptionId ?? '';
+
+    let answer: SubmitAnswerResult;
+
     try {
-      const answer = await this.api.submitAnswer(session.sessionId, {
+      answer = await this.api.submitAnswer(session.sessionId, {
         playerId: session.playerId,
-        questionId: this.question()?.questionId ?? '',
+        questionId: q?.questionId ?? '',
         selectedOptionId: optionId,
         responseTimeInSeconds: responseTime,
       });
-      this.result.set(answer);
-      this.audio.playSfx(answer.isCorrect ? 'correct' : 'wrong');
     } catch {
-      // Cevap gönderilemezse sessizce geç; soru akışı devam eder.
-    } finally {
-      this.phase.set('answered');
-      await this.loadScoreboard(session.sessionId);
+      const isCorrect = this.computeIsCorrect(optionId, correctOptionId);
+      const scoreEarned = isCorrect ? this.computeLocalScore(q, responseTime) : 0;
+      answer = {
+        answerId: 'local-' + Date.now(),
+        isCorrect,
+        scoreEarned,
+        correctOptionId,
+        responseTimeInSeconds: responseTime,
+        usedJokers: this.usedJokers(),
+      };
+      const totalScore = this.myScore() + scoreEarned;
+      void this.relay.publish(session.pinCode, {
+        type: 'answer',
+        sessionId: session.sessionId,
+        playerId: session.playerId,
+        playerName: session.playerName,
+        isCorrect,
+        scoreEarned,
+        newTotalScore: totalScore,
+      });
     }
+
+    this.result.set(answer);
+    this.audio.playSfx(answer.isCorrect ? 'correct' : 'wrong');
+    this.phase.set('answered');
+    await this.loadScoreboard(session.sessionId);
   }
 
   async handleJoker(jokerType: string): Promise<void> {
@@ -466,6 +490,55 @@ export class PlayerGameComponent {
     this.answered = true;
     this.timedOut.set(true);
     this.phase.set('answered');
+  }
+
+  private computeIsCorrect(selectedOptionId: string, correctOptionId: string): boolean {
+    const normalize = (v: unknown): string => String(v ?? '').trim().toUpperCase();
+    const normSelected = normalize(selectedOptionId);
+    const normCorrect = normalize(correctOptionId);
+    if (!normCorrect) {
+      return false;
+    }
+    if (normSelected === normCorrect) {
+      return true;
+    }
+    const q = this.question();
+    if (!q) {
+      return false;
+    }
+    const sorted = sortOptionsById(q.options);
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const selectedIndex = sorted.findIndex((o) => normalize(o.optionId) === normSelected);
+    const correctIndex = sorted.findIndex((o) => normalize(o.optionId) === normCorrect);
+    if (selectedIndex >= 0 && correctIndex >= 0 && selectedIndex === correctIndex) {
+      return true;
+    }
+    if (letters[selectedIndex] === normCorrect || letters[correctIndex] === normSelected) {
+      return true;
+    }
+    const selectedText = normalize(sorted[selectedIndex]?.text ?? '');
+    const correctText = normalize(sorted[correctIndex]?.text ?? '');
+    if (selectedText && correctText && selectedText === correctText) {
+      return true;
+    }
+    return false;
+  }
+
+  private computeLocalScore(q: CurrentQuestionDto | null, responseTime: number): number {
+    if (!q) {
+      return 0;
+    }
+    let timeLimit = q.timeLimitInSeconds;
+    if (this.usedJokers().includes('ExtraTime')) {
+      timeLimit += EXTRA_TIME_SECONDS;
+    }
+    const effectiveTime = Math.min(Math.max(responseTime, 0), timeLimit);
+    const timeFactor = 1.0 - (effectiveTime / timeLimit) * 0.5;
+    let score = Math.round(q.points * timeFactor);
+    if (this.usedJokers().includes('DoublePoints')) {
+      score *= 2;
+    }
+    return Math.max(0, score);
   }
 
   exit(): void {

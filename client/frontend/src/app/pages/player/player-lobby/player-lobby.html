@@ -5,56 +5,31 @@
     <div class="lobby-body">
       <app-logo />
 
-      @if (wrongPin()) {
-        <div class="glass lobby-card anim-fade-in-up">
-          <div class="flex-center">
-            <app-avatar
-              [emoji]="s.avatar.emoji"
-              [color]="s.avatar.color"
-              [fallbackText]="s.playerName"
-              size="xl"
-            />
-          </div>
-          <h1 class="lobby-name">{{ s.playerName }}</h1>
+      <div class="glass lobby-card anim-fade-in-up">
+        <div class="flex-center">
+          <app-avatar
+            [emoji]="s.avatar.emoji"
+            [color]="s.avatar.color"
+            [fallbackText]="s.playerName"
+            size="xl"
+          />
         </div>
+        <h1 class="lobby-name">{{ s.playerName }}</h1>
+        @if (s.teamName) {
+          <p class="text-muted uppercase lobby-team">Takım: {{ s.teamName }}</p>
+        }
+      </div>
 
-        <div class="text-center lobby-waiting-block">
-          <h2 class="lobby-waiting" style="color: #ef4444;">Bağlantı Kurulamadı</h2>
-          <p class="text-muted">
-            "{{ s.quizTitle }}" sınavına {{ s.pinCode }} PIN koduyla katılmaya çalıştınız ancak sunucudan yanıt alınamadı.
-            PIN kodunu kontrol edip tekrar deneyin.
-          </p>
-          <button mat-flat-button color="primary" (click)="retryJoin()" style="margin-top: 16px;">
-            Tekrar Dene
-          </button>
-        </div>
-      } @else {
-        <div class="glass lobby-card anim-fade-in-up">
-          <div class="flex-center">
-            <app-avatar
-              [emoji]="s.avatar.emoji"
-              [color]="s.avatar.color"
-              [fallbackText]="s.playerName"
-              size="xl"
-            />
-          </div>
-          <h1 class="lobby-name">{{ s.playerName }}</h1>
-          @if (s.teamName) {
-            <p class="text-muted uppercase lobby-team">Takım: {{ s.teamName }}</p>
-          }
-        </div>
+      <div class="text-center lobby-waiting-block">
+        <h2 class="lobby-waiting">Sınav Başlaması Bekleniyor</h2>
+        <p class="text-muted">
+          "{{ s.quizTitle }}" sınavına {{ s.pinCode }} PIN koduyla katıldınız.
+        </p>
+      </div>
 
-        <div class="text-center lobby-waiting-block">
-          <h2 class="lobby-waiting">Sınav Başlaması Bekleniyor</h2>
-          <p class="text-muted">
-            "{{ s.quizTitle }}" sınavına {{ s.pinCode }} PIN koduyla katıldınız.
-          </p>
-        </div>
-
-        <div class="lobby-spinner">
-          <app-spinner label="Sınavın başlatılması bekleniyor..." />
-        </div>
-      }
+      <div class="lobby-spinner">
+        <app-spinner label="Sınavın başlatılması bekleniyor..." />
+      </div>
     </div>
   </div>
 }

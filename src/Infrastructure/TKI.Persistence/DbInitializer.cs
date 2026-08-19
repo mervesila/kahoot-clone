@@ -103,39 +103,83 @@ public static class DbInitializer
             return;
         }
 
-        var poolFile = LoadPoolFile();
-        if (poolFile is null)
-        {
-            return;
-        }
+        var isgCategory = await context.Categories
+            .FirstOrDefaultAsync(c => c.Name == "İSG");
 
-        var categories = await context.Categories
-            .ToDictionaryAsync(c => c.Name);
-
-        var isgCategory = categories.GetValueOrDefault("İSG");
         if (isgCategory is null)
         {
             return;
         }
 
-        foreach (var poolCategory in poolFile.Categories)
+        var poolFile = LoadPoolFile();
+        if (poolFile is not null)
         {
-            foreach (var item in poolCategory.Questions)
+            foreach (var poolCategory in poolFile.Categories)
+            {
+                foreach (var item in poolCategory.Questions)
+                {
+                    context.Questions.Add(new Question
+                    {
+                        CategoryId = isgCategory.Id,
+                        QuizId = null,
+                        OrderNo = 0,
+                        Text = item.Text,
+                        TargetRole = "All",
+                        TimeLimitInSeconds = 30,
+                        Points = 1000,
+                        Options = item.Options
+                            .Select((text, index) => new Option
+                            {
+                                Text = text,
+                                IsCorrect = index == item.CorrectIndex
+                            })
+                            .ToList()
+                    });
+                }
+            }
+        }
+        else
+        {
+            var fallbackQuestions = new (string Text, string[] Options, int CorrectIndex)[]
+            {
+                ("Bir iş kazasında ilk yapılması gereken nedir?",
+                    new[] { "Olay yerini terk etmek", "Yaralıya müdahale etmek", "Güvenliği sağlamak ve yetkililere bildirmek", "Kaza raporu doldurmak" }, 2),
+                ("Yangın söndürme tüpü hangi durumda kullanılır?",
+                    new[] { "Küçük çaplı yangınlarda", "Her türlü yangında", "Yalnızca elektrik yangınlarında", "Yalnızca gaz yangınlarında" }, 0),
+                ("Kişisel Koruyucu Donanım (KDD) ne işe yarar?",
+                    new[] { "Çalışanın iş verimini artırır", "İşyerinin temizliğini sağlar", "Meslek hastalıklarını ve iş kazalarını önlemeye yardımcı olur", "Sadece görsel bir zorunluluktur" }, 2),
+                ("ISG kanununa göre работодательın en temel yükümlülüğü nedir?",
+                    new[] { "İşçi maaşlarını zamanında ödemek", "İş sağlığı ve güvenliği önlemlerini almak", "Yıllık izin vermek", "Servis aracı sağlamak" }, 1),
+                ("Risk değerlendirmesi hangi sıklıkla yapılmalıdır?",
+                    new[] { "Her yıl", "İş yerinde risk değişikliği olduğunda veya en az yılda bir", "Yalnızca işe başlarken", "Hiçbir zaman" }, 1),
+                ("Elektrik çarpmasında ilk yapılması gereken nedir?",
+                    new[] { "Yaralıyı hemen kaldırmak", "Elektrik kaynağını kesmek veya izole etmek", "Yaralıya su dökmek", "Hemen suni teneffüs yapmak" }, 1),
+                ("Yüksekte çalışırken hangi önlem alınmalıdır?",
+                    new[] { "Sadece başında baret olması yeterlidir", "Düşme riskini önleyecek koruyucu ekipman ve tedbirler alınmalıdır", "Hızlı çalışmak yeterlidir", "Tek başına çalışılabilir" }, 1),
+                ("Kimyasal madde ile çalışırken hangi koruyucu ekipmanlar kullanılmalıdır?",
+                    new[] { "Yalnızca eldiven", "Gözlük, eldiven, gerekirse respiratör ve koruyucu önlük", "Sadece maske", "Hiçbir ekipman gerekmez" }, 1),
+                ("İş yerinde acil durum planı hazırlanması zorunlu mudur?",
+                    new[] { "Hayır, isteğe bağlıdır", "Evet, işveren tarafından hazırlanması zorunludur", "Yalnızca büyük iş yerlerinde zorunludur", "Devlet tarafından hazırlanır" }, 1),
+                ("Bir WORKER ortalama kaç saat çalışmalıdır, dinlenme süresi ne kadardır?",
+                    new[] { "8 saat çalışma, 1 saat dinlenme", "Günde 11 saate kadar çalışabilir, dinlenme zorunlu değildir", "7.5 saatten fazla çalıştırılamaz, dinlenme süresi verilmelidir", "Sınırsız çalışma serbesttir" }, 2),
+            };
+
+            foreach (var (text, options, correctIndex) in fallbackQuestions)
             {
                 context.Questions.Add(new Question
                 {
                     CategoryId = isgCategory.Id,
                     QuizId = null,
                     OrderNo = 0,
-                    Text = item.Text,
+                    Text = text,
                     TargetRole = "All",
                     TimeLimitInSeconds = 30,
                     Points = 1000,
-                    Options = item.Options
-                        .Select((text, index) => new Option
+                    Options = options
+                        .Select((optText, index) => new Option
                         {
-                            Text = text,
-                            IsCorrect = index == item.CorrectIndex
+                            Text = optText,
+                            IsCorrect = index == correctIndex
                         })
                         .ToList()
                 });
@@ -154,7 +198,13 @@ public static class DbInitializer
 
         if (!await context.Quizzes.AnyAsync(q => q.Level == 1))
         {
-            context.Quizzes.Add(new Quiz
+            var poolQuestions = await context.Questions
+                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null)
+                .OrderBy(q => q.Id)
+                .Take(10)
+                .ToListAsync();
+
+            var quiz = new Quiz
             {
                 Title = LevelOneQuizTitle,
                 Description = "50 soruluk İSG havuzundan her oturumda rastgele 10 soru ile dinamik olarak uygulanan seviye 1 sınavı.",
@@ -164,12 +214,27 @@ public static class DbInitializer
                 PassScore = PassScore,
                 DefaultTimeLimitInSeconds = 30,
                 JokersEnabled = true
-            });
+            };
+            context.Quizzes.Add(quiz);
+            await context.SaveChangesAsync();
+
+            for (int i = 0; i < poolQuestions.Count; i++)
+            {
+                poolQuestions[i].QuizId = quiz.Id;
+                poolQuestions[i].OrderNo = i + 1;
+            }
+            await context.SaveChangesAsync();
         }
 
         if (!await context.Quizzes.AnyAsync(q => q.Level == 2))
         {
-            context.Quizzes.Add(new Quiz
+            var poolQuestions = await context.Questions
+                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null)
+                .OrderBy(q => q.Id)
+                .Take(10)
+                .ToListAsync();
+
+            var quiz = new Quiz
             {
                 Title = LevelTwoQuizTitle,
                 Description = "Seviye 1'de en az %70 puan alanların katılabildiği, kalan havuzdan rastgele 10 soru ile uygulanan seviye 2 sınavı.",
@@ -179,10 +244,17 @@ public static class DbInitializer
                 PassScore = PassScore,
                 DefaultTimeLimitInSeconds = 30,
                 JokersEnabled = true
-            });
-        }
+            };
+            context.Quizzes.Add(quiz);
+            await context.SaveChangesAsync();
 
-        await context.SaveChangesAsync();
+            for (int i = 0; i < poolQuestions.Count; i++)
+            {
+                poolQuestions[i].QuizId = quiz.Id;
+                poolQuestions[i].OrderNo = i + 1;
+            }
+            await context.SaveChangesAsync();
+        }
     }
 
     private static PoolFile? LoadPoolFile()

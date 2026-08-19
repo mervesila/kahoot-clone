@@ -14,8 +14,7 @@ import { GameHubService } from '../../../services/game-hub.service';
 import { RelayService, type RelayGameState } from '../../../services/relay.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
 import { QuizService } from '../../../services/quiz.service';
-import { GameFlowService } from '../../../services/game-flow.service';
-import { getNtfyPublishUrl } from '../../../shared/ntfy-channel.util';
+import { getNtfyOutPublishUrl, getNtfyOutSseUrl } from '../../../shared/ntfy-channel.util';
 import { environment } from '../../../../environments/environment';
 import { sortOptionsById } from '../../../data/options';
 import type {
@@ -51,7 +50,6 @@ export class PlayerGameComponent {
   private readonly sessions = inject(SessionService);
   private readonly relay = inject(RelayService);
   private readonly quiz = inject(QuizService);
-  private readonly gameFlow = inject(GameFlowService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
@@ -197,13 +195,13 @@ export class PlayerGameComponent {
         }
       });
 
-    // ── ntfy SHOW_QUESTION: initial fetch + 1sn polling + SSE (GameFlowService) ──
+    // ── ntfy -out kanalı: SSE + initial fetch + 1sn polling (state==='QUESTION') ──
     if (environment.demo) {
       const safePin = String(currentSession.pinCode ?? '').trim();
-      const ntfyBase = getNtfyPublishUrl(safePin);
+      const outPublishBase = getNtfyOutPublishUrl(safePin);
 
-      const handleShowQuestion = (payload: Record<string, unknown>): void => {
-        if (payload['type'] !== 'SHOW_QUESTION') {
+      const handleOutMessage = (payload: Record<string, unknown>): void => {
+        if (payload['state'] !== 'QUESTION') {
           return;
         }
         const q = payload['question'] as Record<string, unknown> | undefined;
@@ -230,25 +228,32 @@ export class PlayerGameComponent {
         });
       };
 
+      /** ntfy yanıt satırından payload çıkarır */
+      const parseNtfyPayload = (raw: Record<string, unknown>): Record<string, unknown> | null => {
+        const msg = raw['message'];
+        if (typeof msg === 'string' && msg.startsWith('{')) {
+          return JSON.parse(msg) as Record<string, unknown>;
+        }
+        if (typeof msg === 'object' && msg !== null) {
+          return msg as Record<string, unknown>;
+        }
+        if (raw['state']) {
+          return raw;
+        }
+        return null;
+      };
+
       // İlk salisede son mesajı çek — geç gelen oyuncu soruyu anında görür
-      fetch(`${ntfyBase}/json?poll=1&since=all`)
+      fetch(`${outPublishBase}/json?poll=1&since=all`)
         .then((r) => r.text())
         .then((text) => {
           const lines = text.split('\n').filter((l) => l.trim());
           for (let i = lines.length - 1; i >= 0; i--) {
             try {
               const parsed = JSON.parse(lines[i]) as Record<string, unknown>;
-              const msg = parsed['message'];
-              let payload: Record<string, unknown> | null = null;
-              if (typeof msg === 'string' && msg.startsWith('{')) {
-                payload = JSON.parse(msg) as Record<string, unknown>;
-              } else if (typeof msg === 'object' && msg !== null) {
-                payload = msg as Record<string, unknown>;
-              } else if (parsed['type']) {
-                payload = parsed;
-              }
-              if (payload && payload['type'] === 'SHOW_QUESTION') {
-                handleShowQuestion(payload);
+              const payload = parseNtfyPayload(parsed);
+              if (payload && payload['state'] === 'QUESTION') {
+                handleOutMessage(payload);
                 return;
               }
             } catch { /* parse hatası */ }
@@ -256,15 +261,32 @@ export class PlayerGameComponent {
         })
         .catch(() => {});
 
-      // GameFlowService SSE + polling (SHOW_QUESTION dahil)
-      const unsub = this.gameFlow.listenForGameEvents(safePin, handleShowQuestion);
-      this.destroyRef.onDestroy(unsub);
+      // SSE: -out kanalına canlı bağlan (Safari uyumlu)
+      const outSseUrl = getNtfyOutSseUrl(safePin);
+      let outEs: EventSource | null = null;
+      this.ngZone.runOutsideAngular(() => {
+        outEs = new EventSource(outSseUrl);
+        outEs.onmessage = (event: MessageEvent) => {
+          try {
+            const envelope = JSON.parse(event.data) as Record<string, unknown>;
+            const payload = parseNtfyPayload(envelope);
+            if (payload) {
+              this.ngZone.run(() => handleOutMessage(payload));
+            }
+          } catch { /* parse hatası */ }
+        };
+        outEs.onerror = () => {
+          outEs?.close();
+          outEs = null;
+        };
+      });
+      this.destroyRef.onDestroy(() => { outEs?.close(); });
 
       // 1sn bağımsız yedek polling (Safari uyumluluğu)
       let since = Math.floor(Date.now() / 1000);
       const directPoll = setInterval(async () => {
         try {
-          const res = await fetch(`${ntfyBase}/json?poll=1&since=${since}`);
+          const res = await fetch(`${outPublishBase}/json?poll=1&since=${since}`);
           const text = await res.text();
           let latestTime = since;
           for (const line of text.split('\n').filter((l) => l.trim())) {
@@ -274,17 +296,9 @@ export class PlayerGameComponent {
               if (t && t > latestTime) {
                 latestTime = t;
               }
-              const msg = parsed['message'];
-              let payload: Record<string, unknown> | null = null;
-              if (typeof msg === 'string' && msg.startsWith('{')) {
-                payload = JSON.parse(msg) as Record<string, unknown>;
-              } else if (typeof msg === 'object' && msg !== null) {
-                payload = msg as Record<string, unknown>;
-              } else if (parsed['type']) {
-                payload = parsed;
-              }
-              if (payload && payload['type'] === 'SHOW_QUESTION') {
-                handleShowQuestion(payload);
+              const payload = parseNtfyPayload(parsed);
+              if (payload && payload['state'] === 'QUESTION') {
+                handleOutMessage(payload);
               }
             } catch { /* parse hatası */ }
           }

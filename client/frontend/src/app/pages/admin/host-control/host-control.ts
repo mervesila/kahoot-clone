@@ -15,7 +15,7 @@ import { GameHubService } from '../../../services/game-hub.service';
 import { RelayService, type RelayGameStatus, type RelayGameState } from '../../../services/relay.service';
 import { SessionService, type HostSession } from '../../../services/session.service';
 import { optionClass, optionLetter, sortOptionsById } from '../../../data/options';
-import { getNtfyPublishUrl } from '../../../shared/ntfy-channel.util';
+import { getNtfyOutPublishUrl } from '../../../shared/ntfy-channel.util';
 import { environment } from '../../../../environments/environment';
 import type {
   AnswerSubmittedEvent,
@@ -267,8 +267,8 @@ export class HostControlComponent {
   }
 
   /**
-   * Soru ekrana geldiğinde veya İleri'ye basıldığında ntfy kanalına
-   * SHOW_QUESTION POST eder; telefon soruyu anında yakalar.
+   * Soru ekrana geldiğinde veya İleri'ye basıldığında ntfy -out kanalına
+   * QUESTION state POST eder; telefon soruyu anında yakalar.
    */
   private publishShowQuestion(): void {
     const host = this.host();
@@ -278,7 +278,7 @@ export class HostControlComponent {
     }
     const questionIndex = Math.max(0, this.questionOrderNo() - 1);
     const payload = {
-      type: 'SHOW_QUESTION',
+      state: 'QUESTION',
       questionIndex,
       question: {
         id: q.questionId,
@@ -294,7 +294,7 @@ export class HostControlComponent {
         correctOptionId: q.options.find((o) => o.isCorrect)?.optionId ?? null,
       },
     };
-    void fetch(getNtfyPublishUrl(host.pinCode), {
+    void fetch(getNtfyOutPublishUrl(host.pinCode), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),

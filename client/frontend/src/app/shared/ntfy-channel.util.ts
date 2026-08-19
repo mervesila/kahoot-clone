@@ -15,3 +15,16 @@ export function getNtfyPublishUrl(pin: string | number): string {
 export function getNtfySseUrl(pin: string | number): string {
   return `https://ntfy.sh/${getNtfyTopic(pin)}/sse`;
 }
+
+/** Host → Oyuncu yönlü çıkış kanalı (soru, cevap anahtarı vs.) */
+export function getNtfyOutTopic(pin: string | number): string {
+  return `${getNtfyTopic(pin)}-out`;
+}
+
+export function getNtfyOutPublishUrl(pin: string | number): string {
+  return `https://ntfy.sh/${getNtfyOutTopic(pin)}`;
+}
+
+export function getNtfyOutSseUrl(pin: string | number): string {
+  return `https://ntfy.sh/${getNtfyOutTopic(pin)}/sse`;
+}

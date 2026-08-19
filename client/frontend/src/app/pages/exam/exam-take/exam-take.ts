@@ -83,6 +83,9 @@ export class ExamTakeComponent implements OnInit {
         registrationNumber: '',
         quizId: this.quizId,
       });
+      if (!result || !result.question) {
+        throw new Error('Sınav verisi alınamadı.');
+      }
       this.attemptId = result.attemptId;
       this.totalQuestions.set(result.totalQuestions);
       this.currentQuestion.set(result.question);
@@ -90,7 +93,8 @@ export class ExamTakeComponent implements OnInit {
       this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
-      this.entryError.set(err instanceof Error ? err.message : 'Sınav başlatılamadı.');
+      const msg = err instanceof Error ? err.message : 'Sınav soruları yüklenemedi, lütfen tekrar deneyin.';
+      this.entryError.set(msg);
       this.step.set('entry');
     }
   }
@@ -161,6 +165,7 @@ export class ExamTakeComponent implements OnInit {
       }, 1500);
     } catch (err: unknown) {
       this.entryError.set(err instanceof Error ? err.message : 'Cevap gönderilemedi.');
+      this.step.set('error');
     }
   }
 
@@ -168,12 +173,16 @@ export class ExamTakeComponent implements OnInit {
     try {
       this.step.set('loading');
       const result = await this.api.getExamQuestion(this.attemptId, index);
+      if (!result || !result.question) {
+        throw new Error('Soru yüklenemedi.');
+      }
       this.currentQuestion.set(result.question);
       this.questionIndex.set(result.question.index);
       this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
-      this.entryError.set(err instanceof Error ? err.message : 'Soru yüklenemedi.');
+      const msg = err instanceof Error ? err.message : 'Soru yüklenemedi, lütfen tekrar deneyin.';
+      this.entryError.set(msg);
       this.step.set('error');
     }
   }
@@ -182,9 +191,14 @@ export class ExamTakeComponent implements OnInit {
     try {
       this.step.set('loading');
       const result = await this.api.getExamResult(this.attemptId);
+      if (!result) {
+        throw new Error('Sonuç alınamadı.');
+      }
       this.examResult.set(result);
       this.step.set('result');
-    } catch {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Sonuç yüklenemedi.';
+      this.entryError.set(msg);
       this.step.set('error');
     }
   }
@@ -192,5 +206,11 @@ export class ExamTakeComponent implements OnInit {
   exit(): void {
     this.stopTimer();
     void this.router.navigate(['/'], { replaceUrl: true });
+  }
+
+  retryEntry(): void {
+    this.stopTimer();
+    this.entryError.set('');
+    this.step.set('entry');
   }
 }

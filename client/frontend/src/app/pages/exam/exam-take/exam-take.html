@@ -25,8 +25,8 @@
     <p class="loading-text">Yükleniyor...</p>
   } @else if (step() === 'error') {
     <div class="error-box">
-      <p>{{ entryError() }}</p>
-      <button mat-raised-button color="primary" (click)="exit()">Çıkış</button>
+      <p>{{ entryError() || 'Sınav soruları yüklenemedi, lütfen tekrar deneyin.' }}</p>
+      <button mat-raised-button color="primary" (click)="retryEntry()">Tekrar Dene</button>
     </div>
   } @else if (step() === 'result' && examResult()) {
     <div class="result-screen">

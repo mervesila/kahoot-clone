@@ -248,62 +248,6 @@ export class ApiService {
     return this.post<void>(`/api/admin/quizzes/${quizId}/questions/${questionId}`);
   }
 
-  // --- Game session (oyuncu) ---
-  createGameSession(data: CreateGameSessionRequest): Promise<GameSessionDto> {
-    return this.post<GameSessionDto>('/api/player/game-sessions', data, false);
-  }
-
-  joinGame(data: JoinGameSessionRequest): Promise<JoinGameSessionResult> {
-    return this.post<JoinGameSessionResult>('/api/player/game-sessions/join', data, false);
-  }
-
-  startSession(id: string): Promise<GameSessionStateDto> {
-    return this.post<GameSessionStateDto>(
-      `/api/player/game-sessions/${id}/start`,
-      undefined,
-      false,
-    );
-  }
-
-  getSessionState(id: string): Promise<GameSessionStateDto> {
-    return this.get<GameSessionStateDto>(`/api/player/game-sessions/${id}/state`, false);
-  }
-
-  nextQuestion(id: string): Promise<GameSessionStateDto> {
-    return this.post<GameSessionStateDto>(
-      `/api/player/game-sessions/${id}/next-question`,
-      undefined,
-      false,
-    );
-  }
-
-  finishSession(id: string): Promise<GameSessionStateDto> {
-    return this.post<GameSessionStateDto>(
-      `/api/player/game-sessions/${id}/finish`,
-      undefined,
-      false,
-    );
-  }
-
-  getQuestion(id: string, playerId: string): Promise<CurrentQuestionDto> {
-    return this.get<CurrentQuestionDto>(
-      `/api/player/game-sessions/${id}/question?playerId=${playerId}`,
-      false,
-    );
-  }
-
-  submitAnswer(id: string, data: SubmitAnswerRequest): Promise<SubmitAnswerResult> {
-    return this.post<SubmitAnswerResult>(`/api/player/game-sessions/${id}/answers`, data, false);
-  }
-
-  getScoreboard(id: string): Promise<ScoreboardDto> {
-    return this.get<ScoreboardDto>(`/api/player/game-sessions/${id}/scoreboard`, false);
-  }
-
-  getParticipants(id: string): Promise<SessionParticipantDto[]> {
-    return this.get<SessionParticipantDto[]>(`/api/player/game-sessions/${id}/participants`, false);
-  }
-
   // --- Exam (Bireysel Sınav) ---
   startExam(data: { studentName: string; registrationNumber: string; quizId: string }): Promise<ExamStartResult> {
     return this.post<ExamStartResult>('/api/exam/start', data, false);

@@ -23,13 +23,15 @@ public class ExamController : PlayerBaseController
             .FirstOrDefaultAsync(q => q.Id == request.QuizId);
 
         if (quiz == null) return NotFound("Sınav bulunamadı.");
+        if (!quiz.IsActive) return BadRequest("Bu sınavın süresi dolmuş veya erişime kapatılmıştır.");
         if (!quiz.Questions.Any()) return BadRequest("Soru bulunmuyor.");
 
         var attempt = new ExamAttempt
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
             QuizId = request.QuizId,
+            StudentName = request.StudentName,
+            RegistrationNumber = request.RegistrationNumber,
             StartedAt = DateTime.UtcNow,
             CurrentQuestionIndex = 0,
             MaxPossibleScore = quiz.Questions.Count * BasePointsPerQuestion,
@@ -192,7 +194,6 @@ public class ExamController : PlayerBaseController
         if (quiz == null) return NotFound();
 
         var attempts = await _db.ExamAttempts
-            .Include(a => a.User)
             .Include(a => a.Answers).ThenInclude(a => a.Question)
             .Where(a => a.QuizId == quizId)
             .ToListAsync();
@@ -217,11 +218,11 @@ public class ExamController : PlayerBaseController
         }).ToList();
 
         var leaderboard = attempts
-            .GroupBy(a => new { a.UserId, a.User.FirstName, a.User.LastName, a.User.RegistrationNumber })
+            .GroupBy(a => new { a.StudentName, a.RegistrationNumber })
             .Select(g => new LeaderboardEntryDto
             {
-                UserId = g.Key.UserId,
-                StudentName = $"{g.Key.FirstName} {g.Key.LastName}",
+                UserId = Guid.Empty,
+                StudentName = g.Key.StudentName,
                 RegistrationNumber = g.Key.RegistrationNumber,
                 TotalScore = g.Max(a => a.TotalScore),
                 MaxPossibleScore = g.First().MaxPossibleScore,
@@ -247,6 +248,18 @@ public class ExamController : PlayerBaseController
         });
     }
 
+    [HttpPost("toggle-status/{quizId:guid}")]
+    public async Task<IActionResult> ToggleStatus(Guid quizId)
+    {
+        var quiz = await _db.Quizzes.FindAsync(quizId);
+        if (quiz == null) return NotFound("Sınav bulunamadı.");
+
+        quiz.IsActive = !quiz.IsActive;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { quizId = quiz.Id, isActive = quiz.IsActive });
+    }
+
     private static ExamQuestionDto MapQuestion(Question q, int index, int total)
     {
         return new ExamQuestionDto
@@ -266,7 +279,7 @@ public class ExamController : PlayerBaseController
     }
 }
 
-public record StartExamRequest(Guid UserId, Guid QuizId);
+public record StartExamRequest(string StudentName, string RegistrationNumber, Guid QuizId);
 
 public class ExamStartResult
 {

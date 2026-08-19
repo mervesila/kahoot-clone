@@ -305,7 +305,7 @@ export class ApiService {
   }
 
   // --- Exam (Bireysel Sınav) ---
-  startExam(data: { userId: string; quizId: string }): Promise<ExamStartResult> {
+  startExam(data: { studentName: string; registrationNumber: string; quizId: string }): Promise<ExamStartResult> {
     return this.post<ExamStartResult>('/api/exam/start', data, false);
   }
 
@@ -330,6 +330,10 @@ export class ApiService {
 
   getExamReport(quizId: string): Promise<ExamReportDto> {
     return this.get<ExamReportDto>(`/api/admin/exam/${quizId}/report`);
+  }
+
+  toggleExamStatus(quizId: string): Promise<{ quizId: string; isActive: boolean }> {
+    return this.post<{ quizId: string; isActive: boolean }>(`/api/exam/toggle-status/${quizId}`, undefined, false);
   }
 
   // --- Rapor ---

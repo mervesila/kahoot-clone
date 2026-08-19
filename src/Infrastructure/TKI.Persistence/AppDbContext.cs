@@ -162,6 +162,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasOne(ea => ea.User)
                 .WithMany()
                 .HasForeignKey(ea => ea.UserId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(ea => ea.Quiz)
@@ -169,7 +170,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .HasForeignKey(ea => ea.QuizId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasIndex(ea => new { ea.UserId, ea.QuizId });
+            entity.HasIndex(ea => new { ea.QuizId, ea.StudentName });
         });
 
         modelBuilder.Entity<ExamAnswer>(entity =>

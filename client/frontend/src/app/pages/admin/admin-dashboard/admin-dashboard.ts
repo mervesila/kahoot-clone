@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -10,7 +10,6 @@ import { ModalComponent } from '../../../shared/modal/modal';
 import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiError, ApiService } from '../../../services/api.service';
 import { AuthService } from '../../../services/auth.service';
-import { SessionService } from '../../../services/session.service';
 import {
   QuizSettingsDialogComponent,
   type QuizSettingsData,
@@ -39,7 +38,6 @@ import type { CategoryDto, QuizDto } from '../../../models/types';
 export class AdminDashboardComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(ApiService);
-  private readonly sessions = inject(SessionService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
 
@@ -50,7 +48,6 @@ export class AdminDashboardComponent {
   readonly message = signal('');
 
   readonly teamMode = signal(false);
-  readonly busyQuizId = signal<string | null>(null);
 
   readonly deleteTarget = signal<QuizDto | null>(null);
   readonly deleting = signal(false);
@@ -72,11 +69,6 @@ export class AdminDashboardComponent {
   constructor() {
     void this.loadQuizzes();
     void this.loadCategories();
-
-    effect(() => {
-      // Takım modu seçimi yeni oturumlar için kullanılır
-      this.teamMode();
-    });
   }
 
   async loadQuizzes(): Promise<void> {
@@ -89,30 +81,17 @@ export class AdminDashboardComponent {
     }
   }
 
-  async handleStartGame(quiz: QuizDto): Promise<void> {
+  async toggleExamStatus(quiz: QuizDto): Promise<void> {
     this.error.set('');
-    if (!quiz.isActive) {
-      this.error.set('Pasif durumdaki sınavlar başlatılamaz.');
-      return;
-    }
-    this.busyQuizId.set(quiz.id);
+    this.message.set('');
     try {
-      const session = await this.api.createGameSession({
-        quizId: quiz.id,
-        isTeamMode: this.teamMode(),
-      });
-      this.sessions.saveHost({
-        sessionId: session.id,
-        quizId: quiz.id,
-        pinCode: session.pinCode,
-        quizTitle: quiz.title,
-        isTeamMode: this.teamMode(),
-      });
-      await this.router.navigate(['/admin/host', session.id]);
+      const result = await this.api.toggleExamStatus(quiz.id);
+      this.quizzes.update(prev =>
+        prev ? prev.map(q => (q.id === quiz.id ? { ...q, isActive: result.isActive } : q)) : prev,
+      );
+      this.message.set(`"${quiz.title}" sınavı ${result.isActive ? 'aktif' : 'pasif'} yapıldı.`);
     } catch (err) {
-      this.error.set(err instanceof ApiError ? err.message : 'Sınav başlatılamadı.');
-    } finally {
-      this.busyQuizId.set(null);
+      this.error.set(err instanceof ApiError ? err.message : 'Durum değiştirilemedi.');
     }
   }
 

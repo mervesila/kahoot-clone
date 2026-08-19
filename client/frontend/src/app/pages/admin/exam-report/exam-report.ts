@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { SpinnerComponent } from '../../../shared/spinner/spinner';
@@ -8,7 +9,7 @@ import type { ExamReportDto } from '../../../models/types';
 
 @Component({
   selector: 'app-exam-report',
-  imports: [MatButtonModule, RouterLink, LogoComponent, SpinnerComponent],
+  imports: [MatButtonModule, LogoComponent, SpinnerComponent, DecimalPipe],
   templateUrl: './exam-report.html',
   styleUrl: './exam-report.scss',
 })

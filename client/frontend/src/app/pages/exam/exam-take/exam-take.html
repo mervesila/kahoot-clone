@@ -1,13 +1,39 @@
 <div class="exam-container">
-  @if (loading()) {
+  @if (step() === 'entry') {
+    <div class="entry-screen">
+      <app-logo />
+      <h1>Sınava Giriş</h1>
+      <p class="entry-sub">Bilgilerinizi girerek sınava başlayabilirsiniz.</p>
+
+      @if (entryError()) {
+        <div class="entry-error">{{ entryError() }}</div>
+      }
+
+      <div class="entry-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Adınız Soyadınız</mat-label>
+          <input matInput [ngModel]="studentName()" (ngModelChange)="studentName.set($event)" placeholder="Örn: Ali Veli" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Kayıt Numarası</mat-label>
+          <input matInput [ngModel]="registrationNumber()" (ngModelChange)="registrationNumber.set($event)" placeholder="Örn: 2024001" />
+        </mat-form-field>
+
+        <button mat-flat-button color="primary" class="full-width start-btn" (click)="startExam()">
+          Sınava Başla
+        </button>
+      </div>
+    </div>
+  } @else if (step() === 'loading') {
     <app-spinner />
     <p class="loading-text">Yükleniyor...</p>
-  } @else if (error()) {
+  } @else if (step() === 'error') {
     <div class="error-box">
-      <p>{{ error() }}</p>
+      <p>{{ entryError() }}</p>
       <button mat-raised-button color="primary" (click)="exit()">Çıkış</button>
     </div>
-  } @else if (examFinished() && examResult()) {
+  } @else if (step() === 'result' && examResult()) {
     <div class="result-screen">
       <app-logo />
       <h1>Sınav Tamamlandı!</h1>
@@ -29,8 +55,7 @@
       </div>
       <button mat-raised-button color="primary" (click)="exit()">Ana Sayfaya Dön</button>
     </div>
-  } @else if (currentQuestion()) {
-    <!-- Header -->
+  } @else if (step() === 'exam' && currentQuestion()) {
     <div class="exam-header">
       <div class="question-counter">
         Soru {{ questionIndex() + 1 }} / {{ totalQuestions() }}
@@ -40,17 +65,14 @@
       </div>
     </div>
 
-    <!-- Progress bar -->
     <div class="progress-bar">
       <div class="progress-fill" [style.width.%]="progressPercent()"></div>
     </div>
 
-    <!-- Question -->
     <div class="question-text">
       <p>{{ currentQuestion()!.text }}</p>
     </div>
 
-    <!-- Options -->
     <div class="options-grid">
       @for (option of currentQuestion()!.options; track option.optionId; let i = $index) {
         <button
@@ -66,14 +88,12 @@
       }
     </div>
 
-    <!-- Submit button -->
     @if (!lastResult() && selectedIndex()) {
       <button class="submit-btn" mat-raised-button color="primary" (click)="submitAnswer(selectedIndex())">
         Cevabı Gönder
       </button>
     }
 
-    <!-- Result feedback -->
     @if (lastResult()) {
       <div class="result-feedback" [class.correct]="lastResult()!.isCorrect" [class.wrong]="!lastResult()!.isCorrect">
         @if (lastResult()!.isCorrect) {
@@ -84,7 +104,6 @@
       </div>
     }
 
-    <!-- Total score -->
     <div class="score-bar">
       <span>Puan: {{ totalScore() }}</span>
     </div>

@@ -1,16 +1,27 @@
 import { Component, ChangeDetectorRef, DestroyRef, inject, NgZone, signal, computed, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiService } from '../../../services/api.service';
 import { AudioService } from '../../../services/audio.service';
-import { AuthService } from '../../../services/auth.service';
-import type { ExamQuestionDto, ExamOptionDto, ExamStartResult, SubmitExamAnswerResult, ExamResultDto } from '../../../models/types';
+import type { ExamQuestionDto, ExamStartResult, SubmitExamAnswerResult, ExamResultDto } from '../../../models/types';
 
 @Component({
   selector: 'app-exam-take',
-  imports: [MatButtonModule, LogoComponent, SpinnerComponent],
+  imports: [
+    FormsModule,
+    MatButtonModule,
+    MatInputModule,
+    MatFormFieldModule,
+    LogoComponent,
+    SpinnerComponent,
+    DecimalPipe,
+  ],
   templateUrl: './exam-take.html',
   styleUrl: './exam-take.scss',
 })
@@ -19,13 +30,15 @@ export class ExamTakeComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
   private readonly audio = inject(AudioService);
-  private readonly auth = inject(AuthService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly loading = signal(true);
-  readonly error = signal('');
+  readonly step = signal<'entry' | 'loading' | 'error' | 'exam' | 'result'>('entry');
+  readonly studentName = signal('');
+  readonly registrationNumber = signal('');
+  readonly entryError = signal('');
+
   readonly currentQuestion = signal<ExamQuestionDto | null>(null);
   readonly selectedIndex = signal<string | null>(null);
   readonly timeLeft = signal(40);
@@ -52,29 +65,39 @@ export class ExamTakeComponent implements OnInit {
     this.quizId = this.route.snapshot.paramMap.get('quizId') ?? '';
     if (!this.quizId) {
       this.router.navigate(['/'], { replaceUrl: true });
-      return;
     }
-    this.startExam();
   }
 
-  private async startExam(): Promise<void> {
-    const user = this.auth.user();
-    if (!user) {
-      this.router.navigate(['/login'], { replaceUrl: true });
+  async startExam(): Promise<void> {
+    const name = this.studentName().trim();
+    const reg = this.registrationNumber().trim();
+    if (!name) {
+      this.entryError.set('Adınızı ve soyadınızı giriniz.');
       return;
     }
+    if (!reg) {
+      this.entryError.set('Kayıt numaranızı giriniz.');
+      return;
+    }
+
+    this.entryError.set('');
+    this.step.set('loading');
+
     try {
-      this.loading.set(true);
-      const result = await this.api.startExam({ userId: user.userId, quizId: this.quizId });
+      const result = await this.api.startExam({
+        studentName: name,
+        registrationNumber: reg,
+        quizId: this.quizId,
+      });
       this.attemptId = result.attemptId;
       this.totalQuestions.set(result.totalQuestions);
       this.currentQuestion.set(result.question);
       this.questionIndex.set(result.question.index);
-      this.loading.set(false);
+      this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
-      this.error.set(err instanceof Error ? err.message : 'Sınav başlatılamadı.');
-      this.loading.set(false);
+      this.entryError.set(err instanceof Error ? err.message : 'Sınav başlatılamadı.');
+      this.step.set('entry');
     }
   }
 
@@ -87,7 +110,7 @@ export class ExamTakeComponent implements OnInit {
       this.timeLeft.set(remaining);
       if (remaining <= 0) {
         this.stopTimer();
-        this.submitAnswer(null); // timeout — no answer
+        this.submitAnswer(null);
       }
       this.cdr.detectChanges();
     }, 1000);
@@ -129,14 +152,12 @@ export class ExamTakeComponent implements OnInit {
       }
       this.cdr.detectChanges();
 
-      // Auto-advance after 1.5s delay
       setTimeout(() => {
         this.ngZone.run(() => {
           this.lastResult.set(null);
           this.selectedIndex.set(null);
 
           if (result.nextQuestionIndex === -1) {
-            // Exam finished
             this.examFinished.set(true);
             this.fetchResult();
           } else {
@@ -145,32 +166,32 @@ export class ExamTakeComponent implements OnInit {
         });
       }, 1500);
     } catch (err: unknown) {
-      this.error.set(err instanceof Error ? err.message : 'Cevap gönderilemedi.');
+      this.entryError.set(err instanceof Error ? err.message : 'Cevap gönderilemedi.');
     }
   }
 
   private async loadNextQuestion(index: number): Promise<void> {
     try {
-      this.loading.set(true);
+      this.step.set('loading');
       const result = await this.api.getExamQuestion(this.attemptId, index);
       this.currentQuestion.set(result.question);
       this.questionIndex.set(result.question.index);
-      this.loading.set(false);
+      this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
-      this.error.set(err instanceof Error ? err.message : 'Soru yüklenemedi.');
-      this.loading.set(false);
+      this.entryError.set(err instanceof Error ? err.message : 'Soru yüklenemedi.');
+      this.step.set('error');
     }
   }
 
   private async fetchResult(): Promise<void> {
     try {
-      this.loading.set(true);
+      this.step.set('loading');
       const result = await this.api.getExamResult(this.attemptId);
       this.examResult.set(result);
-      this.loading.set(false);
+      this.step.set('result');
     } catch {
-      this.loading.set(false);
+      this.step.set('error');
     }
   }
 

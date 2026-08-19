@@ -12,7 +12,7 @@
     <div class="flex-between admin-head">
       <div>
         <h1 class="admin-title">Quiz Yönetimi</h1>
-        <p class="admin-sub">Sınav havuzunu yönetin, canlı sınav başlatın ve raporları indirin.</p>
+        <p class="admin-sub">Sınavları yönetin, aktif/pasif yapın ve raporları görüntüleyin.</p>
       </div>
       <div class="flex gap-2 admin-head-actions">
         <button mat-flat-button color="primary" (click)="openCreateQuiz()">Yeni Sınav</button>
@@ -100,13 +100,15 @@
             <th mat-header-cell *matHeaderCellDef>İşlemler</th>
             <td mat-cell *matCellDef="let quiz">
               <div class="action-cell">
-                <button
-                  mat-flat-button
+                <mat-slide-toggle
+                  [checked]="quiz.isActive"
+                  (change)="toggleExamStatus(quiz)"
                   color="primary"
-                  [disabled]="!quiz.isActive || busyQuizId() === quiz.id"
-                  (click)="handleStartGame(quiz)"
                 >
-                  {{ busyQuizId() === quiz.id ? 'Başlatılıyor…' : 'Başlat' }}
+                  {{ quiz.isActive ? 'Aktif' : 'Pasif' }}
+                </mat-slide-toggle>
+                <button mat-stroked-button [routerLink]="['/admin/exam', quiz.id, 'report']">
+                  Rapor
                 </button>
                 <button mat-stroked-button (click)="openSettings(quiz)">Ayarlar</button>
                 @if (!quiz.isDynamic) {

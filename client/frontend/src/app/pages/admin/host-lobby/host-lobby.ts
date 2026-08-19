@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, ChangeDetectorRef, computed, DestroyRef, inject, NgZone, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -45,6 +45,7 @@ export class HostLobbyComponent {
   private readonly sessions = inject(SessionService);
   private readonly lobbyService = inject(LobbyService);
   private readonly gameFlow = inject(GameFlowService);
+  private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -82,11 +83,14 @@ export class HostLobbyComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event: PlayerJoinedEvent) => {
         if (event.sessionId === sessionId) {
-          this.upsertPlayer({
-            playerId: event.playerId,
-            name: event.playerName,
-            teamName: event.teamName,
-            ...DEFAULT_AVATAR,
+          this.ngZone.run(() => {
+            this.upsertPlayer({
+              playerId: event.playerId,
+              name: event.playerName,
+              teamName: event.teamName,
+              ...DEFAULT_AVATAR,
+            });
+            this.cdr.detectChanges();
           });
         }
       });

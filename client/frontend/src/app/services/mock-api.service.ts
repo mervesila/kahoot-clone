@@ -546,7 +546,7 @@ export class MockApiService extends ApiService {
   }
 
   // --- Oturum akışı (canlı) ---
-  override async createGameSession(data: { quizId: string; isTeamMode: boolean }): Promise<GameSessionDto> {
+  async createGameSession(data: { quizId: string; isTeamMode: boolean }): Promise<GameSessionDto> {
     this.sessionCounter += 1;
     const quiz = this.quizzes.find((q) => q.id === data.quizId);
     const id = `demo-session-${Date.now().toString(36)}${this.sessionCounter}`;
@@ -569,7 +569,7 @@ export class MockApiService extends ApiService {
     return { id, quizId: data.quizId, pinCode, status: 'Waiting' };
   }
 
-  override async startSession(id: string): Promise<GameSessionStateDto> {
+  async startSession(id: string): Promise<GameSessionStateDto> {
     const state = this.sessionStates.get(id);
     if (state) {
       state.status = 'InGame';
@@ -590,7 +590,7 @@ export class MockApiService extends ApiService {
     return this.getSessionState(id);
   }
 
-  override async nextQuestion(id: string): Promise<GameSessionStateDto> {
+  async nextQuestion(id: string): Promise<GameSessionStateDto> {
     const state = this.sessionStates.get(id);
     const questions = this.sessionQuestionsMap.get(id);
     if (state && state.status === 'InGame' && questions && questions.length > 0) {
@@ -612,7 +612,7 @@ export class MockApiService extends ApiService {
     return this.getSessionState(id);
   }
 
-  override async finishSession(id: string): Promise<GameSessionStateDto> {
+  async finishSession(id: string): Promise<GameSessionStateDto> {
     const state = this.sessionStates.get(id);
     if (state) {
       state.status = 'Finished';
@@ -631,7 +631,7 @@ export class MockApiService extends ApiService {
     return this.getSessionState(id);
   }
 
-  override async getSessionState(id: string): Promise<GameSessionStateDto> {
+  async getSessionState(id: string): Promise<GameSessionStateDto> {
     this.loadStates();
     const local = this.sessionStates.get(id);
     if (local) {
@@ -659,109 +659,6 @@ export class MockApiService extends ApiService {
       ...q,
       options: q.options.map((o) => ({ ...o })),
     }));
-  }
-
-  override async joinGame(data: JoinGameSessionRequest): Promise<JoinGameSessionResult> {
-    let sessionId: string | null = null;
-    let session: { quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean } | null = null;
-    for (const [id, candidate] of this.sessions) {
-      if (candidate.pinCode === data.pinCode) {
-        sessionId = id;
-        session = candidate;
-        break;
-      }
-    }
-
-    const playerName = [data.firstName, data.lastName].filter((v) => v?.trim()).join(' ').trim();
-    if (!playerName) {
-      throw new ApiError(400, 'Ad Soyad bilgisi zorunludur.');
-    }
-
-    if (sessionId && session) {
-      const state = this.sessionStates.get(sessionId);
-      if (state && state.status === 'Finished') {
-        throw new ApiError(400, 'Bu sınav oturumu sona erdi.');
-      }
-
-      const participants = this.loadParticipants(sessionId);
-      const normalized = playerName.toLocaleLowerCase('tr-TR');
-      if (participants.some((p) => p.playerName.toLocaleLowerCase('tr-TR') === normalized)) {
-        throw new ApiError(409, 'Bu isim zaten lobide kullanılıyor.');
-      }
-
-      const playerId = data.playerId ?? uid('oyuncu');
-      participants.push({
-        playerId,
-        playerName,
-        teamName: data.teamName?.trim() || null,
-        avatarEmoji: data.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
-        avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
-      });
-      this.saveParticipants(sessionId, participants);
-
-      return {
-        sessionId,
-        pinCode: session.pinCode,
-        quizTitle: session.quizTitle,
-        playerId,
-        playerName,
-      };
-    }
-
-    // Cihazlar arası katılım: oturum bu cihazda yoksa röle üzerinden
-    // host tarafından duyurulan oturuma katılınır.
-    const announced = this.relay.getAnnounced(data.pinCode);
-    if (!announced) {
-      throw new ApiError(404, 'Bu PIN ile aktif bir sınav bulunamadı.');
-    }
-
-    const playerId = data.playerId ?? uid('oyuncu');
-    void this.relay.publish(data.pinCode, {
-      type: 'join',
-      sessionId: announced.sessionId,
-      playerId,
-      playerName,
-      teamName: data.teamName?.trim() || null,
-      avatarEmoji: data.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
-      avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
-    });
-
-    const remoteParticipants = this.loadParticipants(announced.sessionId);
-    if (!remoteParticipants.some((p) => p.playerId === playerId)) {
-      remoteParticipants.push({
-        playerId,
-        playerName,
-        teamName: data.teamName?.trim() || null,
-        avatarEmoji: data.avatarEmoji?.trim() || DEFAULT_AVATAR.emoji,
-        avatarColor: data.avatarColor?.trim() || DEFAULT_AVATAR.color,
-      });
-      this.saveParticipants(announced.sessionId, remoteParticipants);
-    }
-
-    if (!this.sessions.has(announced.sessionId)) {
-      this.sessions.set(announced.sessionId, {
-        quizId: '',
-        quizTitle: announced.quizTitle,
-        pinCode: data.pinCode,
-        isTeamMode: false,
-      });
-      this.persist();
-    }
-
-    this.relayDisconnects.push(
-      this.relay.connect(data.pinCode, false, (msg) =>
-        this.handleRelayMessage(announced.sessionId, data.pinCode, msg),
-      ),
-    );
-
-    return {
-      sessionId: announced.sessionId,
-      pinCode: data.pinCode,
-      quizTitle: announced.quizTitle,
-      playerId,
-      playerName,
-      viaRelay: true,
-    };
   }
 
   // --- Oyuncu cevap/joker akışı (demo modu) ---

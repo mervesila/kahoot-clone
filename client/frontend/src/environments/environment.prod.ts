@@ -4,8 +4,8 @@ const runtimeApiUrl = (
 
 export const environment = {
   production: true,
-  apiUrl: runtimeApiUrl ?? 'http://192.168.137.238:5150/api',
-  demo: true,
-  relayUrl: 'http://192.168.137.238:5150/gameHub',
-  relayWssUrl: 'http://192.168.137.238:5150/gameHub',
+  apiUrl: runtimeApiUrl ?? 'http://localhost:5150/api',
+  demo: false,
+  relayUrl: 'http://localhost:5150/gameHub',
+  relayWssUrl: 'http://localhost:5150/gameHub',
 };

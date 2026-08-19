@@ -78,13 +78,15 @@ export class ExamTakeComponent implements OnInit {
     this.step.set('loading');
 
     try {
+      console.log('[EXAM] startExam isteği gönderiliyor...', { quizId: this.quizId, studentName: name });
       const result = await this.api.startExam({
         studentName: name,
         registrationNumber: '',
         quizId: this.quizId,
       });
+      console.log('[EXAM] API yanıtı:', result);
       if (!result || !result.question) {
-        throw new Error('Sınav verisi alınamadı.');
+        throw new Error('Sınav verisi alınamadı. Sunucu yanıtı boş döndü.');
       }
       this.attemptId = result.attemptId;
       this.totalQuestions.set(result.totalQuestions);
@@ -93,6 +95,7 @@ export class ExamTakeComponent implements OnInit {
       this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
+      console.error('[EXAM] startExam hatası:', err);
       const msg = err instanceof Error ? err.message : 'Sınav soruları yüklenemedi, lütfen tekrar deneyin.';
       this.entryError.set(msg);
       this.step.set('entry');
@@ -172,15 +175,18 @@ export class ExamTakeComponent implements OnInit {
   private async loadNextQuestion(index: number): Promise<void> {
     try {
       this.step.set('loading');
+      console.log('[EXAM] loadNextQuestion:', { attemptId: this.attemptId, index });
       const result = await this.api.getExamQuestion(this.attemptId, index);
+      console.log('[EXAM] Soru yanıtı:', result);
       if (!result || !result.question) {
-        throw new Error('Soru yüklenemedi.');
+        throw new Error('Soru yüklenemedi. Sunucu yanıtı boş döndü.');
       }
       this.currentQuestion.set(result.question);
       this.questionIndex.set(result.question.index);
       this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
+      console.error('[EXAM] loadNextQuestion hatası:', err);
       const msg = err instanceof Error ? err.message : 'Soru yüklenemedi, lütfen tekrar deneyin.';
       this.entryError.set(msg);
       this.step.set('error');
@@ -190,13 +196,16 @@ export class ExamTakeComponent implements OnInit {
   private async fetchResult(): Promise<void> {
     try {
       this.step.set('loading');
+      console.log('[EXAM] fetchResult:', { attemptId: this.attemptId });
       const result = await this.api.getExamResult(this.attemptId);
+      console.log('[EXAM] Sonuç yanıtı:', result);
       if (!result) {
-        throw new Error('Sonuç alınamadı.');
+        throw new Error('Sonuç alınamadı. Sunucu yanıtı boş döndü.');
       }
       this.examResult.set(result);
       this.step.set('result');
     } catch (err: unknown) {
+      console.error('[EXAM] fetchResult hatası:', err);
       const msg = err instanceof Error ? err.message : 'Sonuç yüklenemedi.';
       this.entryError.set(msg);
       this.step.set('error');

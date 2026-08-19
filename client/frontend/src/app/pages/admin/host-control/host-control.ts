@@ -15,6 +15,7 @@ import { GameHubService } from '../../../services/game-hub.service';
 import { RelayService, type RelayGameStatus, type RelayGameState } from '../../../services/relay.service';
 import { SessionService, type HostSession } from '../../../services/session.service';
 import { optionClass, optionLetter, sortOptionsById } from '../../../data/options';
+import { getNtfyPublishUrl } from '../../../shared/ntfy-channel.util';
 import { environment } from '../../../../environments/environment';
 import type {
   AnswerSubmittedEvent,
@@ -262,6 +263,42 @@ export class HostControlComponent {
       this.timeLimit.set(question.timeLimitInSeconds);
     }
     this.broadcastSnapshot();
+    this.publishShowQuestion();
+  }
+
+  /**
+   * Soru ekrana geldiğinde veya İleri'ye basıldığında ntfy kanalına
+   * SHOW_QUESTION POST eder; telefon soruyu anında yakalar.
+   */
+  private publishShowQuestion(): void {
+    const host = this.host();
+    const q = this.currentQuestion();
+    if (!host || !q) {
+      return;
+    }
+    const questionIndex = Math.max(0, this.questionOrderNo() - 1);
+    const payload = {
+      type: 'SHOW_QUESTION',
+      questionIndex,
+      question: {
+        id: q.questionId,
+        text: q.text,
+        options: sortOptionsById(q.options).map((o) => ({
+          optionId: o.optionId,
+          text: o.text,
+        })),
+        duration: q.timeLimitInSeconds,
+        orderNo: q.orderNo,
+        totalQuestions: this.sessionQuestions().length,
+        points: q.points,
+        correctOptionId: q.options.find((o) => o.isCorrect)?.optionId ?? null,
+      },
+    };
+    void fetch(getNtfyPublishUrl(host.pinCode), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, ChangeDetectorRef, DestroyRef, computed, effect, inject, NgZone, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,6 +14,9 @@ import { GameHubService } from '../../../services/game-hub.service';
 import { RelayService, type RelayGameState } from '../../../services/relay.service';
 import { SessionService, type PlayerSession } from '../../../services/session.service';
 import { QuizService } from '../../../services/quiz.service';
+import { GameFlowService } from '../../../services/game-flow.service';
+import { getNtfyPublishUrl } from '../../../shared/ntfy-channel.util';
+import { environment } from '../../../../environments/environment';
 import { sortOptionsById } from '../../../data/options';
 import type {
   AnswerSubmittedEvent,
@@ -48,6 +51,8 @@ export class PlayerGameComponent {
   private readonly sessions = inject(SessionService);
   private readonly relay = inject(RelayService);
   private readonly quiz = inject(QuizService);
+  private readonly gameFlow = inject(GameFlowService);
+  private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -191,6 +196,103 @@ export class PlayerGameComponent {
           void this.loadScoreboard(currentSession.sessionId);
         }
       });
+
+    // ── ntfy SHOW_QUESTION: initial fetch + 1sn polling + SSE (GameFlowService) ──
+    if (environment.demo) {
+      const safePin = String(currentSession.pinCode ?? '').trim();
+      const ntfyBase = getNtfyPublishUrl(safePin);
+
+      const handleShowQuestion = (payload: Record<string, unknown>): void => {
+        if (payload['type'] !== 'SHOW_QUESTION') {
+          return;
+        }
+        const q = payload['question'] as Record<string, unknown> | undefined;
+        if (!q) {
+          return;
+        }
+        const question: CurrentQuestionDto = {
+          answered: false,
+          finished: false,
+          questionId: (q['id'] as string) ?? null,
+          text: (q['text'] as string) ?? '',
+          orderNo: (q['orderNo'] as number) ?? 0,
+          totalQuestions: (q['totalQuestions'] as number) ?? 1,
+          timeLimitInSeconds: (q['duration'] as number) ?? 30,
+          points: (q['points'] as number) ?? 0,
+          options: Array.isArray(q['options'])
+            ? (q['options'] as Array<{ optionId: string; text: string }>)
+            : [],
+          correctOptionId: (q['correctOptionId'] as string) ?? null,
+        };
+        this.ngZone.run(() => {
+          this.applyNewQuestion(question);
+          this.cdr.detectChanges();
+        });
+      };
+
+      // İlk salisede son mesajı çek — geç gelen oyuncu soruyu anında görür
+      fetch(`${ntfyBase}/json?poll=1&since=all`)
+        .then((r) => r.text())
+        .then((text) => {
+          const lines = text.split('\n').filter((l) => l.trim());
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]) as Record<string, unknown>;
+              const msg = parsed['message'];
+              let payload: Record<string, unknown> | null = null;
+              if (typeof msg === 'string' && msg.startsWith('{')) {
+                payload = JSON.parse(msg) as Record<string, unknown>;
+              } else if (typeof msg === 'object' && msg !== null) {
+                payload = msg as Record<string, unknown>;
+              } else if (parsed['type']) {
+                payload = parsed;
+              }
+              if (payload && payload['type'] === 'SHOW_QUESTION') {
+                handleShowQuestion(payload);
+                return;
+              }
+            } catch { /* parse hatası */ }
+          }
+        })
+        .catch(() => {});
+
+      // GameFlowService SSE + polling (SHOW_QUESTION dahil)
+      const unsub = this.gameFlow.listenForGameEvents(safePin, handleShowQuestion);
+      this.destroyRef.onDestroy(unsub);
+
+      // 1sn bağımsız yedek polling (Safari uyumluluğu)
+      let since = Math.floor(Date.now() / 1000);
+      const directPoll = setInterval(async () => {
+        try {
+          const res = await fetch(`${ntfyBase}/json?poll=1&since=${since}`);
+          const text = await res.text();
+          let latestTime = since;
+          for (const line of text.split('\n').filter((l) => l.trim())) {
+            try {
+              const parsed = JSON.parse(line) as Record<string, unknown>;
+              const t = parsed['time'] as number | undefined;
+              if (t && t > latestTime) {
+                latestTime = t;
+              }
+              const msg = parsed['message'];
+              let payload: Record<string, unknown> | null = null;
+              if (typeof msg === 'string' && msg.startsWith('{')) {
+                payload = JSON.parse(msg) as Record<string, unknown>;
+              } else if (typeof msg === 'object' && msg !== null) {
+                payload = msg as Record<string, unknown>;
+              } else if (parsed['type']) {
+                payload = parsed;
+              }
+              if (payload && payload['type'] === 'SHOW_QUESTION') {
+                handleShowQuestion(payload);
+              }
+            } catch { /* parse hatası */ }
+          }
+          since = latestTime + 1;
+        } catch { /* network hatası */ }
+      }, 1000);
+      this.destroyRef.onDestroy(() => clearInterval(directPoll));
+    }
 
     void this.restoreFromServer(currentSession);
   }

@@ -136,7 +136,7 @@ export class GameFlowService implements OnDestroy {
       }
 
       const type = payload['type'] as string | undefined;
-      if (type === 'GAME_STARTED' || type === 'NEXT_QUESTION' || type === 'FINISHED') {
+      if (type === 'GAME_STARTED' || type === 'NEXT_QUESTION' || type === 'SHOW_QUESTION' || type === 'FINISHED') {
         this.ngZone.run(() => {
           const cbs = this.callbacks.get(pin);
           cbs?.forEach((cb) => cb(payload!));

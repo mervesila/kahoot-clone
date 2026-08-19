@@ -15,11 +15,6 @@
           <input matInput [ngModel]="studentName()" (ngModelChange)="studentName.set($event)" placeholder="Örn: Ali Veli" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Kayıt Numarası</mat-label>
-          <input matInput [ngModel]="registrationNumber()" (ngModelChange)="registrationNumber.set($event)" placeholder="Örn: 2024001" />
-        </mat-form-field>
-
         <button mat-flat-button color="primary" class="full-width start-btn" (click)="startExam()">
           Sınava Başla
         </button>

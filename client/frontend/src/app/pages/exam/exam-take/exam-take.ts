@@ -36,7 +36,6 @@ export class ExamTakeComponent implements OnInit {
 
   readonly step = signal<'entry' | 'loading' | 'error' | 'exam' | 'result'>('entry');
   readonly studentName = signal('');
-  readonly registrationNumber = signal('');
   readonly entryError = signal('');
 
   readonly currentQuestion = signal<ExamQuestionDto | null>(null);
@@ -70,13 +69,8 @@ export class ExamTakeComponent implements OnInit {
 
   async startExam(): Promise<void> {
     const name = this.studentName().trim();
-    const reg = this.registrationNumber().trim();
     if (!name) {
       this.entryError.set('Adınızı ve soyadınızı giriniz.');
-      return;
-    }
-    if (!reg) {
-      this.entryError.set('Kayıt numaranızı giriniz.');
       return;
     }
 
@@ -86,7 +80,7 @@ export class ExamTakeComponent implements OnInit {
     try {
       const result = await this.api.startExam({
         studentName: name,
-        registrationNumber: reg,
+        registrationNumber: '',
         quizId: this.quizId,
       });
       this.attemptId = result.attemptId;

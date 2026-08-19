@@ -111,6 +111,7 @@
                   Rapor
                 </button>
                 <button mat-stroked-button (click)="openSettings(quiz)">Ayarlar</button>
+                <button mat-stroked-button (click)="copyExamLink(quiz)">Link Kopyala</button>
                 @if (!quiz.isDynamic) {
                   <button mat-stroked-button class="danger-btn" (click)="confirmDelete(quiz)">
                     Sil

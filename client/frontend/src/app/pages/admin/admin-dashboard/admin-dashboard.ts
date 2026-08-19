@@ -95,6 +95,16 @@ export class AdminDashboardComponent {
     }
   }
 
+  async copyExamLink(quiz: QuizDto): Promise<void> {
+    const url = `${window.location.origin}/exam/${quiz.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      this.message.set('Link kopyalandı!');
+    } catch {
+      this.error.set('Link kopyalanamadı.');
+    }
+  }
+
   openSettings(quiz: QuizDto): void {
     this.error.set('');
     this.message.set('');

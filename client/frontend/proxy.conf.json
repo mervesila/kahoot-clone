@@ -1,11 +1,11 @@
 {
   "/api": {
-    "target": "http://localhost:5150",
+    "target": "http://192.168.137.238:5150",
     "changeOrigin": true,
     "secure": false
   },
   "/hubs": {
-    "target": "http://localhost:5150",
+    "target": "http://192.168.137.238:5150",
     "changeOrigin": true,
     "secure": false,
     "ws": true

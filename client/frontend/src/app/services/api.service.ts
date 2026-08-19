@@ -8,6 +8,10 @@ import type {
   CreateCategoryRequest,
   CreateQuizRequest,
   CurrentQuestionDto,
+  ExamReportDto,
+  ExamResultDto,
+  ExamStartResult,
+  ExamQuestionResult,
   GameSessionDto,
   GameSessionStateDto,
   JoinGameSessionResult,
@@ -17,6 +21,8 @@ import type {
   SessionParticipantDto,
   SessionQuestionDto,
   SubmitAnswerResult,
+  SubmitExamAnswerRequest,
+  SubmitExamAnswerResult,
   UpdateQuizRequest,
   QuestionPoolDto,
 } from '../models/types';
@@ -296,6 +302,34 @@ export class ApiService {
 
   getParticipants(id: string): Promise<SessionParticipantDto[]> {
     return this.get<SessionParticipantDto[]>(`/api/player/game-sessions/${id}/participants`, false);
+  }
+
+  // --- Exam (Bireysel Sınav) ---
+  startExam(data: { userId: string; quizId: string }): Promise<ExamStartResult> {
+    return this.post<ExamStartResult>('/api/exam/start', data, false);
+  }
+
+  getExamQuestion(attemptId: string, index: number): Promise<ExamQuestionResult> {
+    return this.get<ExamQuestionResult>(
+      `/api/exam/${attemptId}/question?index=${index}`,
+      false,
+    );
+  }
+
+  submitExamAnswer(attemptId: string, data: SubmitExamAnswerRequest): Promise<SubmitExamAnswerResult> {
+    return this.post<SubmitExamAnswerResult>(
+      `/api/exam/${attemptId}/answer`,
+      data,
+      false,
+    );
+  }
+
+  getExamResult(attemptId: string): Promise<ExamResultDto> {
+    return this.get<ExamResultDto>(`/api/exam/${attemptId}/result`, false);
+  }
+
+  getExamReport(quizId: string): Promise<ExamReportDto> {
+    return this.get<ExamReportDto>(`/api/admin/exam/${quizId}/report`);
   }
 
   // --- Rapor ---

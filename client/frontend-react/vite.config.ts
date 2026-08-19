@@ -18,11 +18,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5150',
+        target: 'http://192.168.137.238:5150',
         changeOrigin: true,
       },
       '/hubs': {
-        target: 'http://localhost:5150',
+        target: 'http://192.168.137.238:5150',
         changeOrigin: true,
         ws: true,
       },

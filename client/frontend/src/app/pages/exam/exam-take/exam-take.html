@@ -1,0 +1,92 @@
+<div class="exam-container">
+  @if (loading()) {
+    <app-spinner />
+    <p class="loading-text">Yükleniyor...</p>
+  } @else if (error()) {
+    <div class="error-box">
+      <p>{{ error() }}</p>
+      <button mat-raised-button color="primary" (click)="exit()">Çıkış</button>
+    </div>
+  } @else if (examFinished() && examResult()) {
+    <div class="result-screen">
+      <app-logo />
+      <h1>Sınav Tamamlandı!</h1>
+      <div class="result-card" [class.passed]="examResult()!.isPassed" [class.failed]="!examResult()!.isPassed">
+        <h2>{{ examResult()!.quizTitle }}</h2>
+        <div class="score-display">
+          <span class="score">{{ examResult()!.totalScore }}</span>
+          <span class="max">/ {{ examResult()!.maxPossibleScore }}</span>
+        </div>
+        <p class="percentage">{{ examResult()!.percentage | number:'1.0-1' }}%</p>
+        <p class="pass-status">
+          @if (examResult()!.isPassed) {
+            <span class="passed-badge">GEÇTİ</span>
+          } @else {
+            <span class="failed-badge">KALDI</span>
+          }
+        </p>
+        <p class="detail">{{ examResult()!.correctCount }} / {{ examResult()!.totalQuestions }} doğru</p>
+      </div>
+      <button mat-raised-button color="primary" (click)="exit()">Ana Sayfaya Dön</button>
+    </div>
+  } @else if (currentQuestion()) {
+    <!-- Header -->
+    <div class="exam-header">
+      <div class="question-counter">
+        Soru {{ questionIndex() + 1 }} / {{ totalQuestions() }}
+      </div>
+      <div class="timer" [class.warning]="timeLeft() <= 10" [class.danger]="timeLeft() <= 5">
+        {{ timeLeft() }}s
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="progressPercent()"></div>
+    </div>
+
+    <!-- Question -->
+    <div class="question-text">
+      <p>{{ currentQuestion()!.text }}</p>
+    </div>
+
+    <!-- Options -->
+    <div class="options-grid">
+      @for (option of currentQuestion()!.options; track option.optionId; let i = $index) {
+        <button
+          class="option-btn"
+          [class.selected]="selectedIndex() === option.optionId"
+          [class.correct]="lastResult() && option.optionId === lastResult()!.correctOptionId"
+          [class.wrong]="lastResult() && selectedIndex() === option.optionId && !lastResult()!.isCorrect"
+          [disabled]="!!lastResult()"
+          (click)="selectOption(option.optionId)">
+          <span class="option-letter">{{ ['A','B','C','D'][i] }}</span>
+          <span class="option-text">{{ option.text }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- Submit button -->
+    @if (!lastResult() && selectedIndex()) {
+      <button class="submit-btn" mat-raised-button color="primary" (click)="submitAnswer(selectedIndex())">
+        Cevabı Gönder
+      </button>
+    }
+
+    <!-- Result feedback -->
+    @if (lastResult()) {
+      <div class="result-feedback" [class.correct]="lastResult()!.isCorrect" [class.wrong]="!lastResult()!.isCorrect">
+        @if (lastResult()!.isCorrect) {
+          <p>✓ Doğru! +{{ lastResult()!.scoreEarned }} puan</p>
+        } @else {
+          <p>✗ Yanlış! +{{ lastResult()!.scoreEarned }} puan</p>
+        }
+      </div>
+    }
+
+    <!-- Total score -->
+    <div class="score-bar">
+      <span>Puan: {{ totalScore() }}</span>
+    </div>
+  }
+</div>

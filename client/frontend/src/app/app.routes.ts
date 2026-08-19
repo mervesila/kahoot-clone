@@ -4,8 +4,10 @@ import { JoinPageComponent } from './pages/player/join/join';
 import { PlayerEntryComponent } from './pages/player/player-entry/player-entry';
 import { PlayerLobbyComponent } from './pages/player/player-lobby/player-lobby';
 import { PlayerGameComponent } from './pages/player/player-game/player-game';
+import { ExamTakeComponent } from './pages/exam/exam-take/exam-take';
 import { AdminAuthComponent } from './pages/admin/admin-auth/admin-auth';
 import { AdminDashboardComponent } from './pages/admin/admin-dashboard/admin-dashboard';
+import { ExamReportComponent } from './pages/admin/exam-report/exam-report';
 import { HostLobbyComponent } from './pages/admin/host-lobby/host-lobby';
 import { HostControlComponent } from './pages/admin/host-control/host-control';
 import { adminGuard } from './guards/admin.guard';
@@ -16,11 +18,17 @@ export const routes: Routes = [
   { path: 'player', component: PlayerEntryComponent },
   { path: 'player/lobby', component: PlayerLobbyComponent },
   { path: 'player/game', component: PlayerGameComponent },
+  { path: 'exam/:quizId', component: ExamTakeComponent },
   { path: 'login', component: AdminAuthComponent },
   { path: 'admin', redirectTo: 'login', pathMatch: 'full' },
   {
     path: 'admin/dashboard',
     component: AdminDashboardComponent,
+    canActivate: [adminGuard],
+  },
+  {
+    path: 'admin/exam/:quizId/report',
+    component: ExamReportComponent,
     canActivate: [adminGuard],
   },
   {

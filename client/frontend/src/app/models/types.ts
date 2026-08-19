@@ -261,3 +261,92 @@ export interface QuestionPoolQuestionDto {
   options: string[];
   correctIndex: number;
 }
+
+// === Exam Types ===
+export interface ExamStartResult {
+  attemptId: string;
+  totalQuestions: number;
+  timeLimitPerQuestion: number;
+  question: ExamQuestionDto;
+}
+
+export interface ExamQuestionDto {
+  questionId: string;
+  text: string;
+  index: number;
+  totalQuestions: number;
+  timeLimitInSeconds: number;
+  points: number;
+  options: ExamOptionDto[];
+}
+
+export interface ExamOptionDto {
+  optionId: string;
+  text: string;
+}
+
+export interface SubmitExamAnswerRequest {
+  questionIndex: number;
+  selectedOptionId: string | null;
+  timeSpentMs: number;
+}
+
+export interface SubmitExamAnswerResult {
+  isCorrect: boolean;
+  scoreEarned: number;
+  correctOptionId: string;
+  nextQuestionIndex: number; // -1 = finished
+}
+
+export interface ExamResultDto {
+  attemptId: string;
+  quizTitle: string;
+  totalScore: number;
+  maxPossibleScore: number;
+  percentage: number;
+  isPassed: boolean;
+  passScore: number;
+  totalQuestions: number;
+  correctCount: number;
+  status: string;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
+export interface ExamQuestionResult {
+  question: ExamQuestionDto;
+  alreadyAnswered: boolean;
+  selectedOptionId: string | null;
+}
+
+export interface ExamReportDto {
+  quizId: string;
+  quizTitle: string;
+  totalParticipants: number;
+  passedCount: number;
+  failedCount: number;
+  averageScore: number;
+  passScore: number;
+  leaderboard: LeaderboardEntryDto[];
+  questionStats: QuestionStatDto[];
+}
+
+export interface LeaderboardEntryDto {
+  userId: string;
+  studentName: string;
+  registrationNumber: string;
+  totalScore: number;
+  maxPossibleScore: number;
+  percentage: number;
+  isPassed: boolean;
+  attemptCount: number;
+  bestAttemptId: string;
+}
+
+export interface QuestionStatDto {
+  questionId: string;
+  questionText: string;
+  totalAnswers: number;
+  wrongCount: number;
+  wrongPercentage: number;
+}

@@ -18,6 +18,8 @@ public interface IApplicationDbContext
     DbSet<SessionParticipant> SessionParticipants { get; }
     DbSet<UserQuizResult> UserQuizResults { get; }
     DbSet<GameSessionQuestion> GameSessionQuestions { get; }
+    DbSet<ExamAttempt> ExamAttempts { get; }
+    DbSet<ExamAnswer> ExamAnswers { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

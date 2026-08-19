@@ -20,6 +20,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<SessionParticipant> SessionParticipants => Set<SessionParticipant>();
     public DbSet<UserQuizResult> UserQuizResults => Set<UserQuizResult>();
     public DbSet<GameSessionQuestion> GameSessionQuestions => Set<GameSessionQuestion>();
+    public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
+    public DbSet<ExamAnswer> ExamAnswers => Set<ExamAnswer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -152,6 +154,42 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(gsq => new { gsq.GameSessionId, gsq.OrderNo })
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<ExamAttempt>(entity =>
+        {
+            entity.HasOne(ea => ea.User)
+                .WithMany()
+                .HasForeignKey(ea => ea.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(ea => ea.Quiz)
+                .WithMany()
+                .HasForeignKey(ea => ea.QuizId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(ea => new { ea.UserId, ea.QuizId });
+        });
+
+        modelBuilder.Entity<ExamAnswer>(entity =>
+        {
+            entity.HasOne(ea => ea.ExamAttempt)
+                .WithMany(a => a.Answers)
+                .HasForeignKey(ea => ea.ExamAttemptId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ea => ea.Question)
+                .WithMany()
+                .HasForeignKey(ea => ea.QuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(ea => ea.SelectedOption)
+                .WithMany()
+                .HasForeignKey(ea => ea.SelectedOptionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(ea => new { ea.ExamAttemptId, ea.QuestionIndex })
                 .IsUnique();
         });
     }

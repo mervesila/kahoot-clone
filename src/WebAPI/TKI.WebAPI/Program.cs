@@ -6,23 +6,19 @@ using Npgsql;
 using TKI.Application;
 using TKI.Application.Common.Interfaces;
 using TKI.Persistence;
-using TKI.WebAPI.Hubs;
 using TKI.WebAPI.Middleware;
 using TKI.WebAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-const string FrontendCorsPolicy = "FrontendCors";
-
-var allowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? "http://localhost:4200,http://localhost:5173")
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+const string FrontendCorsPolicy = "AllowAll";
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontendCorsPolicy, policy =>
     {
         policy
-            .WithOrigins(allowedOrigins)
+            .SetIsOriginAllowed(origin => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -34,8 +30,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-
-builder.Services.AddSignalR();
 
 builder.Services.AddApplication();
 
@@ -64,31 +58,15 @@ builder.Services
                 Encoding.UTF8.GetBytes(jwtSection["Key"]!))
         };
 
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                var accessToken = context.Request.Query["access_token"];
-                if (!string.IsNullOrEmpty(accessToken)
-                    && context.HttpContext.Request.Path.StartsWithSegments("/hubs/game"))
-                {
-                    context.Token = accessToken;
-                }
-
-                return Task.CompletedTask;
-            }
-        };
     });
 
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
-builder.Services.AddScoped<IGameEventNotifier, GameEventNotifier>();
 builder.Services.AddScoped<IReportExportService, ReportExportService>();
 
 builder.Services.AddSingleton<QuestionPoolService>();
-builder.Services.AddHostedService<GameHeartbeatService>();
 
 var databaseUrl = builder.Configuration["DATABASE_URL"];
 
@@ -118,7 +96,7 @@ app.UseCors(FrontendCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHub<GameHub>("/hubs/game");
+
 
 app.MapGet("/api/health/db-check", async (AppDbContext db) =>
 {

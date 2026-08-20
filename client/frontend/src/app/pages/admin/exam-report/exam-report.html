@@ -38,20 +38,18 @@
             <tr>
               <th>#</th>
               <th>Ad Soyad</th>
-              <th>No</th>
               <th>Puan</th>
               <th>%</th>
               <th>Durum</th>
             </tr>
           </thead>
           <tbody>
-            @for (entry of report()!.leaderboard; track entry.userId; let i = $index) {
+            @for (entry of report()!.leaderboard; track entry.bestAttemptId; let i = $index) {
               <tr [class.passed]="entry.isPassed" [class.failed]="!entry.isPassed">
                 <td>{{ i + 1 }}</td>
                 <td>{{ entry.studentName }}</td>
-                <td>{{ entry.registrationNumber }}</td>
-                <td>{{ entry.totalScore }}</td>
-                <td>{{ entry.percentage | number:'1.0-1' }}%</td>
+                <td>{{ entry.totalScore }} / {{ entry.maxPossibleScore }}</td>
+                <td>%{{ entry.percentage | number:'1.0-1' }}</td>
                 <td>
                   @if (entry.isPassed) {
                     <span class="badge pass">GEÇTİ</span>

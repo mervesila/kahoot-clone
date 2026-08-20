@@ -29,11 +29,13 @@ import type {
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
   errors?: Record<string, string[]>;
 
-  constructor(status: number, message: string, errors?: Record<string, string[]>) {
+  constructor(status: number, message: string, errors?: Record<string, string[]>, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
     this.errors = errors;
   }
 }
@@ -131,12 +133,12 @@ export class ApiService {
       return error;
     }
     if (error instanceof HttpErrorResponse) {
-      const payload = error.error as { message?: string; errors?: Record<string, string[]> } | null;
+      const payload = error.error as { message?: string; code?: string; errors?: Record<string, string[]> } | null;
       const message =
         typeof payload?.message === 'string' && payload.message
           ? payload.message
           : `İstek başarısız (${error.status})`;
-      return new ApiError(error.status, message, payload?.errors);
+      return new ApiError(error.status, message, payload?.errors, payload?.code);
     }
     return new ApiError(0, 'Sunucuya bağlanılamadı.');
   }

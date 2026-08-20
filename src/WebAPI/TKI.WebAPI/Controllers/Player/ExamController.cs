@@ -148,6 +148,8 @@ public class ExamController : PlayerBaseController
 
         if (attempt == null) return NotFound("Sınav oturumu bulunamadı.");
         if (attempt.Status == "Finished") return BadRequest("Sınav zaten tamamlandı.");
+        if (!attempt.Quiz.IsActive)
+            return BadRequest(new { code = "EXAM_DEACTIVATED", message = "Bu sınav şu anda yönetici tarafından durdurulmuştur." });
 
         var questions = attempt.Quiz.Questions.ToList();
         if (request.QuestionIndex < 0 || request.QuestionIndex >= questions.Count)
@@ -230,6 +232,8 @@ public class ExamController : PlayerBaseController
 
         if (attempt == null) return NotFound();
         if (attempt.Status == "Finished") return BadRequest("Sınav tamamlandı.");
+        if (!attempt.Quiz.IsActive)
+            return BadRequest(new { code = "EXAM_DEACTIVATED", message = "Bu sınav şu anda yönetici tarafından durdurulmuştur." });
 
         var questions = attempt.Quiz.Questions.ToList();
         if (index < 0 || index >= questions.Count) return BadRequest("Geçersiz soru indeksi.");

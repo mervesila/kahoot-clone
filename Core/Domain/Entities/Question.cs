@@ -5,6 +5,7 @@ using Domain.Common;
 public class Question : BaseEntity<Guid>
 {
     public int CategoryId { get; set; }
+    public int Level { get; set; } = 1;
     public Guid? QuizId { get; set; }
     public string Text { get; set; } = string.Empty;
     public string? MediaUrl { get; set; }

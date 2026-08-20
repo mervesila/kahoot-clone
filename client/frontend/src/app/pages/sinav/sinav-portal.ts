@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { LogoComponent } from '../../shared/logo/logo';
 import { SpinnerComponent } from '../../shared/spinner/spinner';
-import { ApiService } from '../../services/api.service';
+import { ApiService, ApiError } from '../../services/api.service';
 import { AudioService } from '../../services/audio.service';
 import type { ExamQuestionDto, ExamStartResult, SubmitExamAnswerResult, ExamResultDto } from '../../models/types';
 
@@ -159,8 +159,15 @@ export class SinavPortalComponent implements OnInit {
         });
       }, 1500);
     } catch (err: unknown) {
-      this.entryError.set(err instanceof Error ? err.message : 'Cevap gönderilemedi.');
-      this.step.set('error');
+      const msg = err instanceof Error ? err.message : 'Cevap gönderilemedi.';
+      if (err instanceof ApiError && err.code === 'EXAM_DEACTIVATED') {
+        this.stopTimer();
+        this.entryError.set(msg);
+        this.step.set('error');
+      } else {
+        this.entryError.set(msg);
+        this.step.set('error');
+      }
     }
   }
 
@@ -177,6 +184,9 @@ export class SinavPortalComponent implements OnInit {
       this.startTimer();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Soru yüklenemedi.';
+      if (err instanceof ApiError && err.code === 'EXAM_DEACTIVATED') {
+        this.stopTimer();
+      }
       this.entryError.set(msg);
       this.step.set('error');
     }

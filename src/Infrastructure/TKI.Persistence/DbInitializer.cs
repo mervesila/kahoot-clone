@@ -53,6 +53,7 @@ public static class DbInitializer
         await SeedAdminAsync(context);
         await SeedQuestionPoolAsync(context);
         await SeedLevelQuizzesAsync(context);
+        await MigrateQuestionLevelsAsync(context);
     }
 
     private static async Task SeedAdminAsync(AppDbContext context)
@@ -254,6 +255,7 @@ public static class DbInitializer
             foreach (var q in poolQuestions)
             {
                 q.QuizId = level1Quiz.Id;
+                q.Level = 1;
                 q.OrderNo = l1LinkedCount + poolQuestions.IndexOf(q) + 1;
             }
             await context.SaveChangesAsync();
@@ -296,10 +298,29 @@ public static class DbInitializer
             foreach (var q in poolQuestions)
             {
                 q.QuizId = level2Quiz.Id;
+                q.Level = 2;
                 q.OrderNo = l2LinkedCount + poolQuestions.IndexOf(q) + 1;
             }
             await context.SaveChangesAsync();
         }
+    }
+
+    private static async Task MigrateQuestionLevelsAsync(AppDbContext context)
+    {
+        var questionsWithQuiz = await context.Questions
+            .Include(q => q.Quiz)
+            .Where(q => q.QuizId != null && q.Level == 0)
+            .ToListAsync();
+
+        foreach (var q in questionsWithQuiz)
+        {
+            if (q.Quiz != null)
+            {
+                q.Level = q.Quiz.Level;
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 
     private static PoolFile? LoadPoolFile()

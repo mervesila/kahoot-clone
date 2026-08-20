@@ -52,6 +52,7 @@ public static class DbInitializer
         await SeedCategoriesAsync(context);
         await SeedAdminAsync(context);
         await SeedQuestionPoolAsync(context);
+        await SeedLevel2QuestionsAsync(context);
         await SeedLevelQuizzesAsync(context);
         await MigrateQuestionLevelsAsync(context);
     }
@@ -143,6 +144,7 @@ public static class DbInitializer
                     context.Questions.Add(new Question
                     {
                         CategoryId = isgCategory.Id,
+                        Level = 1,
                         QuizId = null,
                         OrderNo = 0,
                         Text = item.Text,
@@ -191,6 +193,7 @@ public static class DbInitializer
                 context.Questions.Add(new Question
                 {
                     CategoryId = isgCategory.Id,
+                    Level = 1,
                     QuizId = null,
                     OrderNo = 0,
                     Text = text,
@@ -206,6 +209,74 @@ public static class DbInitializer
                         .ToList()
                 });
             }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedLevel2QuestionsAsync(AppDbContext context)
+    {
+        var isgCategory = await context.Categories
+            .FirstOrDefaultAsync(c => c.Name == "İSG");
+
+        if (isgCategory is null) return;
+
+        var hasLevel2 = await context.Questions.AnyAsync(q => q.Level == 2);
+        if (hasLevel2) return;
+
+        var level2Questions = new (string Text, string[] Options, int CorrectIndex)[]
+        {
+            ("İş Sağlığı ve Güvenliği Kanunu'na (6331) göre \"Çok Tehlikeli\" sınıfta yer alan bir işyerinde iş güvenliği uzmanının çalışan başına ayda en az kaç dakika zaman ayırması gerekir?",
+                new[] { "10 dk", "15 dk", "40 dk", "60 dk" }, 2),
+
+            ("İşyerlerinde acil durum tahliye tatbikatları mevzuata göre en geç hangi sıklıkla tekrarlanmalıdır?",
+                new[] { "6 ayda bir", "Yılda en az 1 defa", "2 yılda bir", "3 yılda bir" }, 1),
+
+            ("İş kazası meydana geldiğinde işverenin bu kazayı SGK'ya bildirme süresi en geç kaç iş günüdür?",
+                new[] { "1 iş günü", "2 iş günü", "3 iş günü", "5 iş günü" }, 2),
+
+            ("Yüksekte çalışmada kullanılan düşmeyi durdurma sistemlerinin (Lanyard/Yaşam Hattı) temel amacı nedir?",
+                new[] { "Düşmeyi tamamen engellemek", "Düşme gerçekleşirse çalışanın yere çarpmasını önleyip darbe kuvvetini emmek", "Çalışanın kaymasını engellemek", "Çalışma alanını aydınlatmak" }, 1),
+
+            ("Kapalı/sınırlı alanlarda (depo, tank, kuyu vb.) çalışmaya başlamadan önce yapılması gereken ilk ve en kritik kontrol nedir?",
+                new[] { "Ortam gaz ve oksijen ölçümü yapmak", "Aydınlatmayı açmak", "Baret takmak", "İçeriyi suyla yıkamak" }, 0),
+
+            ("Kişisel Koruyucu Donanımların (KKD) kullanımıyla ilgili hangisi doğrudur?",
+                new[] { "KKD'ler toplu korunma önlemlerinin yerine geçer", "Toplu korunma önlemleri alınamadığında veya yetersiz kaldığında KKD kullanılır", "KKD ücreti çalışanın maaşından kesilir", "KKD seçimi sadece çalışanın isteğine bağlıdır" }, 1),
+
+            ("İşyerinde risk değerlendirmesi yapılırken uygulanması gereken ilk aşama hangisidir?",
+                new[] { "Risk analizi", "Tehlikelerin tanımlanması", "Önlemlerin belirlenmesi", "Düzeltici faaliyetler" }, 1),
+
+            ("Basınçlı kapların (kompresör, hava tankı vb.) periyodik kontrolleri mevzuata göre en geç hangi sürelerde yapılmalıdır?",
+                new[] { "6 ay", "1 yıl", "2 yıl", "5 yıl" }, 1),
+
+            ("İş hijyeni ölçümlerinde \"TWA\" (Time Weighted Average) ifadesi neyi temsil eder?",
+                new[] { "Anlık en yüksek maruziyet değerini", "8 saatlik vardiya için zaman ağırlıklı ortalama maruziyet değerini", "15 dakikalık kısa süreli maruziyet değerini", "Haftalık toplam çalışma süresini" }, 1),
+
+            ("Patlayıcı ortamların oluşmasını önlemek ve ATEX standartlarına uymak için hazırlanan dokümana ne ad verilir?",
+                new[] { "Patlamadan Korunma Dokümanı (PKD)", "Yangın Tahliye Planı", "Acil Durum Eylem Planı", "Malzeme Güvenlik Bilgi Formu (MSDS)" }, 0),
+        };
+
+        foreach (var (text, options, correctIndex) in level2Questions)
+        {
+            context.Questions.Add(new Question
+            {
+                CategoryId = isgCategory.Id,
+                Level = 2,
+                QuizId = null,
+                OrderNo = 0,
+                Text = text,
+                TargetRole = "All",
+                TimeLimitInSeconds = 40,
+                Points = 1,
+                Options = options
+                    .Select((optText, index) => new Option
+                    {
+                        Text = optText,
+                        IsCorrect = index == correctIndex
+                    })
+                    .ToList()
+            });
         }
 
         await context.SaveChangesAsync();
@@ -290,7 +361,7 @@ public static class DbInitializer
                 .ToListAsync();
 
             var poolQuestions = await context.Questions
-                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null && !linkedIds.Contains(q.Id))
+                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null && q.Level == 2 && !linkedIds.Contains(q.Id))
                 .OrderBy(q => q.Id)
                 .Take(10 - l2LinkedCount)
                 .ToListAsync();
@@ -298,7 +369,6 @@ public static class DbInitializer
             foreach (var q in poolQuestions)
             {
                 q.QuizId = level2Quiz.Id;
-                q.Level = 2;
                 q.OrderNo = l2LinkedCount + poolQuestions.IndexOf(q) + 1;
             }
             await context.SaveChangesAsync();

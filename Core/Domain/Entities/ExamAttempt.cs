@@ -15,6 +15,7 @@ public class ExamAttempt : BaseEntity<Guid>
     public bool IsPassed { get; set; }
     public int CurrentQuestionIndex { get; set; }
     public string Status { get; set; } = "InProgress";
+    public string? SelectedQuestionIds { get; set; }
 
     public User? User { get; set; }
     public Quiz Quiz { get; set; } = null!;

@@ -24,6 +24,9 @@ public class ExamController : PlayerBaseController
         if (!quiz.IsActive) return BadRequest("Bu sınavın süresi dolmuş veya erişime kapatılmıştır.");
         if (!quiz.Questions.Any()) return BadRequest("Soru bulunmuyor.");
 
+        var selectedIds = SelectRandomQuestionIds(quiz.Questions.ToList(), quiz.Questions.Count);
+        var selectedQuestions = GetQuestionsInOrder(quiz, selectedIds);
+
         var attempt = new ExamAttempt
         {
             Id = Guid.NewGuid(),
@@ -32,18 +35,18 @@ public class ExamController : PlayerBaseController
             RegistrationNumber = request.RegistrationNumber,
             StartedAt = DateTime.UtcNow,
             CurrentQuestionIndex = 0,
-            MaxPossibleScore = quiz.Questions.Count,
+            MaxPossibleScore = selectedQuestions.Count,
+            SelectedQuestionIds = selectedIds,
         };
         _db.ExamAttempts.Add(attempt);
         await _db.SaveChangesAsync();
 
-        var firstQuestion = quiz.Questions.OrderBy(q => q.OrderNo).First();
         return Ok(new ExamStartResult
         {
             AttemptId = attempt.Id,
-            TotalQuestions = quiz.Questions.Count,
+            TotalQuestions = selectedQuestions.Count,
             TimeLimitPerQuestion = TimeLimitPerQuestionSeconds,
-            Question = MapQuestion(firstQuestion, 0, quiz.Questions.Count)
+            Question = MapQuestion(selectedQuestions[0], 0, selectedQuestions.Count)
         });
     }
 
@@ -82,16 +85,18 @@ public class ExamController : PlayerBaseController
             if (quiz == null)
                 return BadRequest("Devam eden sınav bulunamadı.");
 
-            var question = quiz.Questions.OrderBy(q => q.OrderNo).Skip(inProgress.CurrentQuestionIndex).FirstOrDefault();
+            var questions = GetQuestionsInOrder(quiz, inProgress.SelectedQuestionIds);
+            var question = inProgress.CurrentQuestionIndex < questions.Count
+                ? questions[inProgress.CurrentQuestionIndex]
+                : questions[0];
+
             return Ok(new ExamStartResult
             {
                 AttemptId = inProgress.Id,
-                TotalQuestions = quiz.Questions.Count,
+                TotalQuestions = questions.Count,
                 TimeLimitPerQuestion = TimeLimitPerQuestionSeconds,
                 Level = quiz.Level,
-                Question = question != null
-                    ? MapQuestion(question, inProgress.CurrentQuestionIndex, quiz.Questions.Count)
-                    : MapQuestion(quiz.Questions.First(), 0, quiz.Questions.Count)
+                Question = MapQuestion(question, inProgress.CurrentQuestionIndex, questions.Count)
             });
         }
 
@@ -114,6 +119,9 @@ public class ExamController : PlayerBaseController
         if (!quiz.Questions.Any())
             return BadRequest("Soru bulunmuyor.");
 
+        var selectedIds = SelectRandomQuestionIds(quiz.Questions.ToList(), quiz.Questions.Count);
+        var selectedQuestions = GetQuestionsInOrder(quiz, selectedIds);
+
         var attempt = new ExamAttempt
         {
             Id = Guid.NewGuid(),
@@ -122,18 +130,18 @@ public class ExamController : PlayerBaseController
             RegistrationNumber = registrationNumber,
             StartedAt = DateTime.UtcNow,
             CurrentQuestionIndex = 0,
-            MaxPossibleScore = quiz.Questions.Count,
+            MaxPossibleScore = selectedQuestions.Count,
+            SelectedQuestionIds = selectedIds,
         };
         _db.ExamAttempts.Add(attempt);
         await _db.SaveChangesAsync();
 
-        var firstQuestion = quiz.Questions.OrderBy(q => q.OrderNo).First();
         return Ok(new ExamStartResult
         {
             AttemptId = attempt.Id,
-            TotalQuestions = quiz.Questions.Count,
+            TotalQuestions = selectedQuestions.Count,
             TimeLimitPerQuestion = TimeLimitPerQuestionSeconds,
-            Question = MapQuestion(firstQuestion, 0, quiz.Questions.Count),
+            Question = MapQuestion(selectedQuestions[0], 0, selectedQuestions.Count),
             Level = quiz.Level
         });
     }
@@ -151,7 +159,7 @@ public class ExamController : PlayerBaseController
         if (!attempt.Quiz.IsActive)
             return BadRequest(new { code = "EXAM_DEACTIVATED", message = "Bu sınav şu anda yönetici tarafından durdurulmuştur." });
 
-        var questions = attempt.Quiz.Questions.ToList();
+        var questions = GetQuestionsInOrder(attempt.Quiz, attempt.SelectedQuestionIds);
         if (request.QuestionIndex < 0 || request.QuestionIndex >= questions.Count)
             return BadRequest("Geçersiz soru indeksi.");
 
@@ -235,7 +243,7 @@ public class ExamController : PlayerBaseController
         if (!attempt.Quiz.IsActive)
             return BadRequest(new { code = "EXAM_DEACTIVATED", message = "Bu sınav şu anda yönetici tarafından durdurulmuştur." });
 
-        var questions = attempt.Quiz.Questions.ToList();
+        var questions = GetQuestionsInOrder(attempt.Quiz, attempt.SelectedQuestionIds);
         if (index < 0 || index >= questions.Count) return BadRequest("Geçersiz soru indeksi.");
 
         var question = questions[index];
@@ -401,6 +409,36 @@ public class ExamController : PlayerBaseController
                 Text = o.Text
             }).ToList()
         };
+    }
+
+    private static string SelectRandomQuestionIds(List<Question> allQuestions, int count)
+    {
+        var shuffled = allQuestions.OrderBy(_ => Guid.NewGuid()).Take(count).ToList();
+        return string.Join(",", shuffled.Select(q => q.Id));
+    }
+
+    private static List<Question> GetQuestionsInOrder(Quiz quiz, string? selectedIds)
+    {
+        var allQuestions = quiz.Questions.ToList();
+
+        if (!string.IsNullOrWhiteSpace(selectedIds))
+        {
+            var idList = selectedIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(Guid.Parse)
+                .ToList();
+
+            var questionMap = allQuestions.ToDictionary(q => q.Id);
+            var ordered = new List<Question>();
+            foreach (var id in idList)
+            {
+                if (questionMap.TryGetValue(id, out var q))
+                    ordered.Add(q);
+            }
+            if (ordered.Count == idList.Count)
+                return ordered;
+        }
+
+        return allQuestions.OrderBy(q => q.OrderNo).ToList();
     }
 }
 

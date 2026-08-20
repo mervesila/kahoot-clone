@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ public static class DbInitializer
     private const int PassScore = 70;
 
     private const string SeedAdminRegistrationNumber = "admin1";
-    private const string SeedAdminPasswordHash = "100000.Tb8rm0K65N//w5OP8YoASQ==.PIJMqcbmPpHAuv557GiUmrYgYV98s5HYOQMUU0HpEcg=";
+    private const string SeedAdminDefaultPassword = "123456";
 
     private sealed class PoolFile
     {
@@ -56,11 +57,18 @@ public static class DbInitializer
 
     private static async Task SeedAdminAsync(AppDbContext context)
     {
-        var exists = await context.Users.AnyAsync(
+        var existing = await context.Users.FirstOrDefaultAsync(
             u => u.RegistrationNumber == SeedAdminRegistrationNumber);
 
-        if (exists)
+        var passwordHash = HashPassword(SeedAdminDefaultPassword);
+
+        if (existing is not null)
         {
+            if (existing.PasswordHash != passwordHash)
+            {
+                existing.PasswordHash = passwordHash;
+                await context.SaveChangesAsync();
+            }
             return;
         }
 
@@ -71,10 +79,23 @@ public static class DbInitializer
             LastName = "Akyol",
             Department = "Yönetim",
             Role = "Admin",
-            PasswordHash = SeedAdminPasswordHash
+            PasswordHash = passwordHash
         });
 
         await context.SaveChangesAsync();
+    }
+
+    private static string HashPassword(string password)
+    {
+        const int iterations = 100_000;
+        var salt = RandomNumberGenerator.GetBytes(16);
+        var hash = Rfc2898DeriveBytes.Pbkdf2(
+            password,
+            salt,
+            iterations,
+            HashAlgorithmName.SHA256,
+            32);
+        return $"{iterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
     }
 
     private static async Task SeedCategoriesAsync(AppDbContext context)

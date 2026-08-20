@@ -63,7 +63,7 @@ export class ExamTakeComponent implements OnInit {
   ngOnInit(): void {
     this.quizId = this.route.snapshot.paramMap.get('quizId') ?? '';
     if (!this.quizId) {
-      this.router.navigate(['/'], { replaceUrl: true });
+      this.router.navigate(['/login'], { replaceUrl: true });
     }
   }
 
@@ -214,7 +214,7 @@ export class ExamTakeComponent implements OnInit {
 
   exit(): void {
     this.stopTimer();
-    void this.router.navigate(['/'], { replaceUrl: true });
+    void this.router.navigate(['/login'], { replaceUrl: true });
   }
 
   retryEntry(): void {

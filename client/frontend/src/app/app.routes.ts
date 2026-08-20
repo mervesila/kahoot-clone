@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { HomeComponent } from './pages/home/home';
 import { ExamTakeComponent } from './pages/exam/exam-take/exam-take';
 import { AdminAuthComponent } from './pages/admin/admin-auth/admin-auth';
 import { AdminDashboardComponent } from './pages/admin/admin-dashboard/admin-dashboard';
@@ -7,10 +6,8 @@ import { ExamReportComponent } from './pages/admin/exam-report/exam-report';
 import { adminGuard } from './guards/admin.guard';
 
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
-  { path: 'exam/:quizId', component: ExamTakeComponent },
+  { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: AdminAuthComponent },
-  { path: 'admin', redirectTo: 'login', pathMatch: 'full' },
   {
     path: 'admin/dashboard',
     component: AdminDashboardComponent,
@@ -21,5 +18,6 @@ export const routes: Routes = [
     component: ExamReportComponent,
     canActivate: [adminGuard],
   },
-  { path: '**', redirectTo: '' },
+  { path: 'exam/:quizId', component: ExamTakeComponent },
+  { path: '**', redirectTo: 'login' },
 ];

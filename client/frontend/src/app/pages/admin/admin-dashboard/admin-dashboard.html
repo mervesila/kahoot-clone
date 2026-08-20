@@ -3,7 +3,6 @@
     <app-logo size="sm" />
     <div class="flex-between header-actions">
       <span class="user-name">{{ currentUser()?.firstName }} {{ currentUser()?.lastName }}</span>
-      <a routerLink="/player" class="portal-link">Sınav Portalı</a>
       <button mat-stroked-button (click)="handleLogout()">Çıkış</button>
     </div>
   </header>

@@ -48,7 +48,11 @@
         </p>
         <p class="detail">{{ examResult()!.correctCount }} / {{ examResult()!.totalQuestions }} doğru</p>
       </div>
-      <button mat-raised-button color="warn" (click)="closeScreen()">Ekranı Kapat</button>
+      <p class="close-hint">Sınavınız tamamlanmıştır. Bu ekranı kapatabilirsiniz.</p>
+      @if (entryError()) {
+        <div class="entry-error">{{ entryError() }}</div>
+      }
+      <button mat-raised-button color="primary" (click)="closeScreen()">Tamam</button>
     </div>
   } @else if (step() === 'exam' && currentQuestion()) {
     <div class="exam-header">

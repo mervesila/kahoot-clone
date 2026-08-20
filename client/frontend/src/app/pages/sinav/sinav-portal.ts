@@ -206,6 +206,8 @@ export class SinavPortalComponent implements OnInit {
 
   closeScreen(): void {
     this.stopTimer();
-    window.location.href = 'about:blank';
+    window.close();
+    this.entryError.set('Ekranı kapatmak için tarayıcı sekmesini manuel olarak kapatabilirsiniz.');
+    this.step.set('result');
   }
 }

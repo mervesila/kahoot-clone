@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { ExamTakeComponent } from './pages/exam/exam-take/exam-take';
+import { SinavPortalComponent } from './pages/sinav/sinav-portal';
 import { AdminAuthComponent } from './pages/admin/admin-auth/admin-auth';
 import { AdminDashboardComponent } from './pages/admin/admin-dashboard/admin-dashboard';
 import { ExamReportComponent } from './pages/admin/exam-report/exam-report';
@@ -18,6 +18,6 @@ export const routes: Routes = [
     component: ExamReportComponent,
     canActivate: [adminGuard],
   },
-  { path: 'exam/:quizId', component: ExamTakeComponent },
+  { path: 'sinav', component: SinavPortalComponent },
   { path: '**', redirectTo: 'login' },
 ];

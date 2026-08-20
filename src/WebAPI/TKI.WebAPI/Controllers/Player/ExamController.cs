@@ -47,6 +47,97 @@ public class ExamController : PlayerBaseController
         });
     }
 
+    [HttpPost("start-by-level")]
+    public async Task<IActionResult> StartByLevel([FromBody] StartByLevelRequest request)
+    {
+        var studentName = request.StudentName.Trim();
+        if (string.IsNullOrEmpty(studentName))
+            return BadRequest("Öğrenci adı zorunludur.");
+
+        var level1Quiz = await _db.Quizzes
+            .Include(q => q.Questions.OrderBy(o => o.OrderNo)).ThenInclude(q => q.Options)
+            .FirstOrDefaultAsync(q => q.Level == 1 && q.IsActive);
+
+        var level2Quiz = await _db.Quizzes
+            .Include(q => q.Questions.OrderBy(o => o.OrderNo)).ThenInclude(q => q.Options)
+            .FirstOrDefaultAsync(q => q.Level == 2 && q.IsActive);
+
+        var previousAttempts = await _db.ExamAttempts
+            .Where(a => a.StudentName == studentName)
+            .ToListAsync();
+
+        bool hasPassedLevel1 = previousAttempts
+            .Any(a => a.QuizId == level1Quiz?.Id && a.IsPassed);
+
+        bool hasInProgressAttempt = previousAttempts
+            .Any(a => a.Status == "InProgress");
+
+        if (hasInProgressAttempt)
+        {
+            var inProgress = previousAttempts.First(a => a.Status == "InProgress");
+            var quiz = await _db.Quizzes
+                .Include(q => q.Questions.OrderBy(o => o.OrderNo)).ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(q => q.Id == inProgress.QuizId);
+
+            if (quiz == null)
+                return BadRequest("Devam eden sınav bulunamadı.");
+
+            var question = quiz.Questions.OrderBy(q => q.OrderNo).Skip(inProgress.CurrentQuestionIndex).FirstOrDefault();
+            return Ok(new ExamStartResult
+            {
+                AttemptId = inProgress.Id,
+                TotalQuestions = quiz.Questions.Count,
+                TimeLimitPerQuestion = TimeLimitPerQuestionSeconds,
+                Level = quiz.Level,
+                Question = question != null
+                    ? MapQuestion(question, inProgress.CurrentQuestionIndex, quiz.Questions.Count)
+                    : MapQuestion(quiz.Questions.First(), 0, quiz.Questions.Count)
+            });
+        }
+
+        if (!hasPassedLevel1)
+        {
+            if (level1Quiz == null)
+                return BadRequest(new { code = "NO_ACTIVE_EXAM", message = "Katılabileceğiniz aktif bir sınav bulunmamaktadır." });
+
+            return await CreateAndStartExam(level1Quiz, studentName, request.RegistrationNumber);
+        }
+
+        if (level2Quiz == null)
+            return BadRequest(new { code = "NO_LEVEL2", message = "Seviye 2 sınavı henüz aktif değil. Yöneticinizin onayını bekleyin." });
+
+        return await CreateAndStartExam(level2Quiz, studentName, request.RegistrationNumber);
+    }
+
+    private async Task<IActionResult> CreateAndStartExam(Quiz quiz, string studentName, string registrationNumber)
+    {
+        if (!quiz.Questions.Any())
+            return BadRequest("Soru bulunmuyor.");
+
+        var attempt = new ExamAttempt
+        {
+            Id = Guid.NewGuid(),
+            QuizId = quiz.Id,
+            StudentName = studentName,
+            RegistrationNumber = registrationNumber,
+            StartedAt = DateTime.UtcNow,
+            CurrentQuestionIndex = 0,
+            MaxPossibleScore = quiz.Questions.Count,
+        };
+        _db.ExamAttempts.Add(attempt);
+        await _db.SaveChangesAsync();
+
+        var firstQuestion = quiz.Questions.OrderBy(q => q.OrderNo).First();
+        return Ok(new ExamStartResult
+        {
+            AttemptId = attempt.Id,
+            TotalQuestions = quiz.Questions.Count,
+            TimeLimitPerQuestion = TimeLimitPerQuestionSeconds,
+            Question = MapQuestion(firstQuestion, 0, quiz.Questions.Count),
+            Level = quiz.Level
+        });
+    }
+
     [HttpPost("{attemptId:guid}/answer")]
     public async Task<IActionResult> SubmitAnswer(Guid attemptId, [FromBody] SubmitExamAnswerRequest request)
     {
@@ -311,11 +402,14 @@ public class ExamController : PlayerBaseController
 
 public record StartExamRequest(string StudentName, string RegistrationNumber, Guid QuizId);
 
+public record StartByLevelRequest(string StudentName, string RegistrationNumber);
+
 public class ExamStartResult
 {
     public Guid AttemptId { get; set; }
     public int TotalQuestions { get; set; }
     public int TimeLimitPerQuestion { get; set; }
+    public int Level { get; set; }
     public ExamQuestionDto Question { get; set; } = null!;
 }
 

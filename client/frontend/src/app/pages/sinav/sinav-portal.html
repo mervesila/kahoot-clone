@@ -1,9 +1,9 @@
-<div class="exam-container">
+<div class="sinav-container">
   @if (step() === 'entry') {
     <div class="entry-screen">
       <app-logo />
       <h1>Sınava Giriş</h1>
-      <p class="entry-sub">Bilgilerinizi girerek sınava başlayabilirsiniz.</p>
+      <p class="entry-sub">Adınızı girerek sınava başlayabilirsiniz.</p>
 
       @if (entryError()) {
         <div class="entry-error">{{ entryError() }}</div>
@@ -25,7 +25,7 @@
     <p class="loading-text">Yükleniyor...</p>
   } @else if (step() === 'error') {
     <div class="error-box">
-      <p>{{ entryError() || 'Sınav soruları yüklenemedi, lütfen tekrar deneyin.' }}</p>
+      <p>{{ entryError() || 'Bir hata oluştu.' }}</p>
       <button mat-raised-button color="primary" (click)="retryEntry()">Tekrar Dene</button>
     </div>
   } @else if (step() === 'result' && examResult()) {
@@ -48,7 +48,7 @@
         </p>
         <p class="detail">{{ examResult()!.correctCount }} / {{ examResult()!.totalQuestions }} doğru</p>
       </div>
-      <button mat-raised-button color="primary" (click)="exit()">Ana Sayfaya Dön</button>
+      <button mat-raised-button color="warn" (click)="closeScreen()">Ekranı Kapat</button>
     </div>
   } @else if (step() === 'exam' && currentQuestion()) {
     <div class="exam-header">

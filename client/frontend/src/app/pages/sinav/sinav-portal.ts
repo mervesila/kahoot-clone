@@ -1,18 +1,18 @@
 import { Component, ChangeDetectorRef, DestroyRef, inject, NgZone, signal, computed, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { LogoComponent } from '../../../shared/logo/logo';
-import { SpinnerComponent } from '../../../shared/spinner/spinner';
-import { ApiService } from '../../../services/api.service';
-import { AudioService } from '../../../services/audio.service';
-import type { ExamQuestionDto, ExamStartResult, SubmitExamAnswerResult, ExamResultDto } from '../../../models/types';
+import { LogoComponent } from '../../shared/logo/logo';
+import { SpinnerComponent } from '../../shared/spinner/spinner';
+import { ApiService } from '../../services/api.service';
+import { AudioService } from '../../services/audio.service';
+import type { ExamQuestionDto, ExamStartResult, SubmitExamAnswerResult, ExamResultDto } from '../../models/types';
 
 @Component({
-  selector: 'app-exam-take',
+  selector: 'app-sinav-portal',
   imports: [
     FormsModule,
     MatButtonModule,
@@ -22,11 +22,10 @@ import type { ExamQuestionDto, ExamStartResult, SubmitExamAnswerResult, ExamResu
     SpinnerComponent,
     DecimalPipe,
   ],
-  templateUrl: './exam-take.html',
-  styleUrl: './exam-take.scss',
+  templateUrl: './sinav-portal.html',
+  styleUrl: './sinav-portal.scss',
 })
-export class ExamTakeComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+export class SinavPortalComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
   private readonly audio = inject(AudioService);
@@ -44,12 +43,11 @@ export class ExamTakeComponent implements OnInit {
   readonly questionIndex = signal(0);
   readonly totalQuestions = signal(0);
   readonly lastResult = signal<SubmitExamAnswerResult | null>(null);
-  readonly examFinished = signal(false);
   readonly examResult = signal<ExamResultDto | null>(null);
   readonly totalScore = signal(0);
+  readonly examLevel = signal(0);
 
   private attemptId = '';
-  private quizId = '';
   private timerHandle: ReturnType<typeof setInterval> | null = null;
   private questionStartTime = 0;
 
@@ -61,10 +59,8 @@ export class ExamTakeComponent implements OnInit {
   readonly isLastQuestion = computed(() => this.questionIndex() >= this.totalQuestions() - 1);
 
   ngOnInit(): void {
-    this.quizId = this.route.snapshot.paramMap.get('quizId') ?? '';
-    if (!this.quizId) {
-      this.router.navigate(['/login'], { replaceUrl: true });
-    }
+    sessionStorage.removeItem('sinav_student');
+    sessionStorage.removeItem('sinav_attempt');
   }
 
   async startExam(): Promise<void> {
@@ -78,25 +74,22 @@ export class ExamTakeComponent implements OnInit {
     this.step.set('loading');
 
     try {
-      console.log('[EXAM] startExam isteği gönderiliyor...', { quizId: this.quizId, studentName: name });
-      const result = await this.api.startExam({
+      const result = await this.api.startByLevel({
         studentName: name,
         registrationNumber: '',
-        quizId: this.quizId,
       });
-      console.log('[EXAM] API yanıtı:', result);
       if (!result || !result.question) {
-        throw new Error('Sınav verisi alınamadı. Sunucu yanıtı boş döndü.');
+        throw new Error('Sınav verisi alınamadı.');
       }
       this.attemptId = result.attemptId;
       this.totalQuestions.set(result.totalQuestions);
       this.currentQuestion.set(result.question);
       this.questionIndex.set(result.question.index);
+      this.examLevel.set(result.level);
       this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
-      console.error('[EXAM] startExam hatası:', err);
-      const msg = err instanceof Error ? err.message : 'Sınav soruları yüklenemedi, lütfen tekrar deneyin.';
+      const msg = err instanceof Error ? err.message : 'Katılabileceğiniz aktif bir sınav bulunmamaktadır.';
       this.entryError.set(msg);
       this.step.set('entry');
     }
@@ -159,7 +152,6 @@ export class ExamTakeComponent implements OnInit {
           this.selectedIndex.set(null);
 
           if (result.nextQuestionIndex === -1) {
-            this.examFinished.set(true);
             this.fetchResult();
           } else {
             this.loadNextQuestion(result.nextQuestionIndex);
@@ -175,19 +167,16 @@ export class ExamTakeComponent implements OnInit {
   private async loadNextQuestion(index: number): Promise<void> {
     try {
       this.step.set('loading');
-      console.log('[EXAM] loadNextQuestion:', { attemptId: this.attemptId, index });
       const result = await this.api.getExamQuestion(this.attemptId, index);
-      console.log('[EXAM] Soru yanıtı:', result);
       if (!result || !result.question) {
-        throw new Error('Soru yüklenemedi. Sunucu yanıtı boş döndü.');
+        throw new Error('Soru yüklenemedi.');
       }
       this.currentQuestion.set(result.question);
       this.questionIndex.set(result.question.index);
       this.step.set('exam');
       this.startTimer();
     } catch (err: unknown) {
-      console.error('[EXAM] loadNextQuestion hatası:', err);
-      const msg = err instanceof Error ? err.message : 'Soru yüklenemedi, lütfen tekrar deneyin.';
+      const msg = err instanceof Error ? err.message : 'Soru yüklenemedi.';
       this.entryError.set(msg);
       this.step.set('error');
     }
@@ -196,30 +185,27 @@ export class ExamTakeComponent implements OnInit {
   private async fetchResult(): Promise<void> {
     try {
       this.step.set('loading');
-      console.log('[EXAM] fetchResult:', { attemptId: this.attemptId });
       const result = await this.api.getExamResult(this.attemptId);
-      console.log('[EXAM] Sonuç yanıtı:', result);
       if (!result) {
-        throw new Error('Sonuç alınamadı. Sunucu yanıtı boş döndü.');
+        throw new Error('Sonuç alınamadı.');
       }
       this.examResult.set(result);
       this.step.set('result');
     } catch (err: unknown) {
-      console.error('[EXAM] fetchResult hatası:', err);
       const msg = err instanceof Error ? err.message : 'Sonuç yüklenemedi.';
       this.entryError.set(msg);
       this.step.set('error');
     }
   }
 
-  exit(): void {
-    this.stopTimer();
-    void this.router.navigate(['/login'], { replaceUrl: true });
-  }
-
   retryEntry(): void {
     this.stopTimer();
     this.entryError.set('');
     this.step.set('entry');
+  }
+
+  closeScreen(): void {
+    this.stopTimer();
+    window.location.href = 'about:blank';
   }
 }

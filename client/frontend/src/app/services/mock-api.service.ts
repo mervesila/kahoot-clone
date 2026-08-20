@@ -659,6 +659,14 @@ export class MockApiService extends ApiService {
 
   // --- Oyuncu cevap/joker akışı (demo modu) ---
 
+  override async startByLevel(data: { studentName: string; registrationNumber: string }): Promise<import('../models/types').ExamStartResult> {
+    const level1 = this.quizzes.find(q => q.level === 1 && q.isActive);
+    if (!level1) {
+      throw new Error('Katılabileceğiniz aktif bir sınav bulunmamaktadır.');
+    }
+    return this.startExam({ studentName: data.studentName, registrationNumber: data.registrationNumber, quizId: level1.id });
+  }
+
   override async getReport(_sessionId: string): Promise<unknown> {
     return { status: 'ok', message: 'Demo rapor verisi' };
   }

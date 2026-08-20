@@ -256,6 +256,7 @@ export interface ExamStartResult {
   attemptId: string;
   totalQuestions: number;
   timeLimitPerQuestion: number;
+  level: number;
   question: ExamQuestionDto;
 }
 

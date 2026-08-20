@@ -252,6 +252,10 @@ export class ApiService {
     return this.post<ExamStartResult>('/api/exam/start', data, false);
   }
 
+  startByLevel(data: { studentName: string; registrationNumber: string }): Promise<ExamStartResult> {
+    return this.post<ExamStartResult>('/api/exam/start-by-level', data, false);
+  }
+
   getExamQuestion(attemptId: string, index: number): Promise<ExamQuestionResult> {
     return this.get<ExamQuestionResult>(
       `/api/exam/${attemptId}/question?index=${index}`,

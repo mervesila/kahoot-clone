@@ -19,7 +19,7 @@ public class ExamController : PlayerBaseController
     public async Task<IActionResult> StartExam([FromBody] StartExamRequest request)
     {
         var quiz = await _db.Quizzes
-            .Include(q => q.Questions.OrderBy(o => o.OrderNo))
+            .Include(q => q.Questions.OrderBy(o => o.OrderNo)).ThenInclude(q => q.Options)
             .FirstOrDefaultAsync(q => q.Id == request.QuizId);
 
         if (quiz == null) return NotFound("Sınav bulunamadı.");
@@ -54,7 +54,7 @@ public class ExamController : PlayerBaseController
     {
         var attempt = await _db.ExamAttempts
             .Include(a => a.Answers)
-            .Include(a => a.Quiz).ThenInclude(q => q.Questions.OrderBy(o => o.OrderNo))
+            .Include(a => a.Quiz).ThenInclude(q => q.Questions.OrderBy(o => o.OrderNo)).ThenInclude(q => q.Options)
             .FirstOrDefaultAsync(a => a.Id == attemptId);
 
         if (attempt == null) return NotFound("Sınav oturumu bulunamadı.");
@@ -136,7 +136,7 @@ public class ExamController : PlayerBaseController
     public async Task<IActionResult> GetQuestion(Guid attemptId, [FromQuery] int index)
     {
         var attempt = await _db.ExamAttempts
-            .Include(a => a.Quiz).ThenInclude(q => q.Questions.OrderBy(o => o.OrderNo))
+            .Include(a => a.Quiz).ThenInclude(q => q.Questions.OrderBy(o => o.OrderNo)).ThenInclude(q => q.Options)
             .Include(a => a.Answers)
             .FirstOrDefaultAsync(a => a.Id == attemptId);
 

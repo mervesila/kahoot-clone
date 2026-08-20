@@ -5,20 +5,20 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #1a1a2e;
-  color: #fff;
+  background: #f4f6f8;
+  color: #1e293b;
 }
 
 .loading-text {
   text-align: center;
   margin-top: 1rem;
-  color: #aaa;
+  color: #64748b;
 }
 
 .error-box {
   text-align: center;
   padding: 2rem;
-  color: #ff6b6b;
+  color: #dc2626;
 }
 
 .exam-header {
@@ -30,18 +30,19 @@
 
 .question-counter {
   font-size: 1rem;
-  color: #aaa;
+  font-weight: 500;
+  color: #475569;
 }
 
 .timer {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #4ecdc4;
+  color: #0ea5e9;
   min-width: 60px;
   text-align: center;
 
-  &.warning { color: #ffd93d; }
-  &.danger { color: #ff6b6b; animation: pulse 0.5s infinite; }
+  &.warning { color: #f59e0b; }
+  &.danger { color: #dc2626; animation: pulse 0.5s infinite; }
 }
 
 @keyframes pulse {
@@ -51,22 +52,23 @@
 
 .progress-bar {
   height: 4px;
-  background: #333;
+  background: #e2e8f0;
   border-radius: 2px;
   margin: 0.5rem 0;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4ecdc4, #44bd9e);
+  background: linear-gradient(90deg, #0ea5e9, #3b82f6);
   border-radius: 2px;
   transition: width 0.3s;
 }
 
 .question-text {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   padding: 1.5rem 0;
-  line-height: 1.5;
+  line-height: 1.6;
+  color: #1e293b;
 }
 
 .options-grid {
@@ -80,33 +82,37 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  border: 2px solid #333;
+  border: 2px solid #e2e8f0;
   border-radius: 12px;
-  background: #16213e;
-  color: #fff;
+  background: #fff;
+  color: #1e293b;
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
   font-size: 0.95rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 
   &:hover:not(:disabled) {
-    border-color: #4ecdc4;
-    background: #1a2744;
+    border-color: #93c5fd;
+    background: #eff6ff;
   }
 
   &.selected {
-    border-color: #4ecdc4;
-    background: #1a3a4a;
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
   }
 
   &.correct {
-    border-color: #2ecc71 !important;
-    background: #1a3a2a !important;
+    border-color: #16a34a !important;
+    background: #f0fdf4 !important;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
   }
 
   &.wrong {
-    border-color: #e74c3c !important;
-    background: #3a1a1a !important;
+    border-color: #dc2626 !important;
+    background: #fef2f2 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
   }
 }
 
@@ -117,9 +123,26 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #333;
+  background: #e2e8f0;
+  color: #475569;
   font-weight: bold;
+  font-size: 0.85rem;
   flex-shrink: 0;
+
+  .selected & {
+    background: #3b82f6;
+    color: #fff;
+  }
+
+  .correct & {
+    background: #16a34a;
+    color: #fff;
+  }
+
+  .wrong & {
+    background: #dc2626;
+    color: #fff;
+  }
 }
 
 .submit-btn {
@@ -137,8 +160,8 @@
   font-size: 1.1rem;
   font-weight: bold;
 
-  &.correct { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-  &.wrong { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+  &.correct { background: #f0fdf4; color: #16a34a; }
+  &.wrong { background: #fef2f2; color: #dc2626; }
 }
 
 .score-bar {
@@ -146,8 +169,9 @@
   padding: 1rem;
   text-align: center;
   font-size: 1.1rem;
-  color: #aaa;
-  border-top: 1px solid #333;
+  font-weight: 500;
+  color: #475569;
+  border-top: 1px solid #e2e8f0;
 }
 
 .result-screen {
@@ -158,18 +182,21 @@
   padding: 2rem;
   text-align: center;
 
-  h1 { font-size: 1.8rem; }
+  h1 { font-size: 1.8rem; color: #1e293b; }
 }
 
 .result-card {
-  background: #16213e;
+  background: #fff;
   border-radius: 16px;
   padding: 2rem;
   width: 100%;
   max-width: 400px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
-  &.passed { border: 2px solid #2ecc71; }
-  &.failed { border: 2px solid #e74c3c; }
+  &.passed { border: 2px solid #16a34a; }
+  &.failed { border: 2px solid #dc2626; }
+
+  h2 { color: #1e293b; }
 }
 
 .score-display {
@@ -177,20 +204,20 @@
   font-weight: bold;
   margin: 1rem 0;
 
-  .score { color: #4ecdc4; }
-  .max { color: #666; font-size: 1.5rem; }
+  .score { color: #3b82f6; }
+  .max { color: #94a3b8; font-size: 1.5rem; }
 }
 
 .percentage {
   font-size: 1.5rem;
-  color: #aaa;
+  color: #475569;
 }
 
 .pass-status {
   margin: 1rem 0;
 
   .passed-badge {
-    background: #2ecc71;
+    background: #16a34a;
     color: #fff;
     padding: 0.5rem 1.5rem;
     border-radius: 20px;
@@ -198,7 +225,7 @@
   }
 
   .failed-badge {
-    background: #e74c3c;
+    background: #dc2626;
     color: #fff;
     padding: 0.5rem 1.5rem;
     border-radius: 20px;
@@ -206,7 +233,7 @@
   }
 }
 
-.detail { color: #aaa; margin-top: 0.5rem; }
+.detail { color: #64748b; margin-top: 0.5rem; }
 
 .entry-screen {
   display: flex;
@@ -216,20 +243,17 @@
   padding: 2rem;
   text-align: center;
 
-  h1 { font-size: 1.8rem; }
-
-  ::ng-deep .logo-text .tki { color: #fff; }
-  ::ng-deep .logo-text .brand { color: #4ecdc4; }
+  h1 { font-size: 1.8rem; color: #1e293b; }
 }
 
 .entry-sub {
-  color: #aaa;
+  color: #64748b;
   margin-bottom: 1rem;
 }
 
 .entry-error {
-  background: rgba(231, 76, 60, 0.2);
-  color: #e74c3c;
+  background: #fef2f2;
+  color: #dc2626;
   padding: 0.75rem 1.25rem;
   border-radius: 8px;
   width: 100%;
@@ -243,34 +267,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-
-  ::ng-deep .mat-mdc-form-field {
-    color: #fff;
-  }
-
-  ::ng-deep .mdc-text-field--outlined .mdc-notched-outline__leading,
-  ::ng-deep .mdc-text-field--outlined .mdc-notched-outline__notch,
-  ::ng-deep .mdc-text-field--outlined .mdc-notched-outline__trailing {
-    border-color: #555;
-  }
-
-  ::ng-deep .mdc-text-field--outlined .mdc-floating-label {
-    color: #aaa;
-  }
-
-  ::ng-deep .mat-mdc-input-element {
-    color: #fff !important;
-    caret-color: #fff;
-  }
-
-  ::ng-deep .mat-mdc-input-element::placeholder {
-    color: #888 !important;
-    opacity: 1;
-  }
-
-  ::ng-deep .mat-mdc-form-field-focus-overlay {
-    background-color: transparent;
-  }
 }
 
 .full-width {

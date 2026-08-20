@@ -27,6 +27,39 @@ public static class DbInitializer
     private const string SeedAdminRegistrationNumber = "admin1";
     private const string SeedAdminDefaultPassword = "1234567A";
 
+    private static readonly (string Text, string[] Options, int CorrectIndex)[] level2QuestionsData = new[]
+    {
+        ("İş Sağlığı ve Güvenliği Kanunu'na (6331) göre \"Çok Tehlikeli\" sınıfta yer alan bir işyerinde iş güvenliği uzmanının çalışan başına ayda en az kaç dakika zaman ayırması gerekir?",
+            new[] { "10 dk", "15 dk", "40 dk", "60 dk" }, 2),
+
+        ("İşyerlerinde acil durum tahliye tatbikatları mevzuata göre en geç hangi sıklıkla tekrarlanmalıdır?",
+            new[] { "6 ayda bir", "Yılda en az 1 defa", "2 yılda bir", "3 yılda bir" }, 1),
+
+        ("İş kazası meydana geldiğinde işverenin bu kazayı SGK'ya bildirme süresi en geç kaç iş günüdür?",
+            new[] { "1 iş günü", "2 iş günü", "3 iş günü", "5 iş günü" }, 2),
+
+        ("Yüksekte çalışmada kullanılan düşmeyi durdurma sistemlerinin (Lanyard/Yaşam Hattı) temel amacı nedir?",
+            new[] { "Düşmeyi tamamen engellemek", "Düşme gerçekleşirse çalışanın yere çarpmasını önleyip darbe kuvvetini emmek", "Çalışanın kaymasını engellemek", "Çalışma alanını aydınlatmak" }, 1),
+
+        ("Kapalı/sınırlı alanlarda (depo, tank, kuyu vb.) çalışmaya başlamadan önce yapılması gereken ilk ve en kritik kontrol nedir?",
+            new[] { "Ortam gaz ve oksijen ölçümü yapmak", "Aydınlatmayı açmak", "Baret takmak", "İçeriyi suyla yıkamak" }, 0),
+
+        ("Kişisel Koruyucu Donanımların (KKD) kullanımıyla ilgili hangisi doğrudur?",
+            new[] { "KKD'ler toplu korunma önlemlerinin yerine geçer", "Toplu korunma önlemleri alınamadığında veya yetersiz kaldığında KKD kullanılır", "KKD ücreti çalışanın maaşından kesilir", "KKD seçimi sadece çalışanın isteğine bağlıdır" }, 1),
+
+        ("İşyerinde risk değerlendirmesi yapılırken uygulanması gereken ilk aşama hangisidir?",
+            new[] { "Risk analizi", "Tehlikelerin tanımlanması", "Önlemlerin belirlenmesi", "Düzeltici faaliyetler" }, 1),
+
+        ("Basınçlı kapların (kompresör, hava tankı vb.) periyodik kontrolleri mevzuata göre en geç hangi sürelerde yapılmalıdır?",
+            new[] { "6 ay", "1 yıl", "2 yıl", "5 yıl" }, 1),
+
+        ("İş hijyeni ölçümlerinde \"TWA\" (Time Weighted Average) ifadesi neyi temsil eder?",
+            new[] { "Anlık en yüksek maruziyet değerini", "8 saatlik vardiya için zaman ağırlıklı ortalama maruziyet değerini", "15 dakikalık kısa süreli maruziyet değerini", "Haftalık toplam çalışma süresini" }, 1),
+
+        ("Patlayıcı ortamların oluşmasını önlemek ve ATEX standartlarına uymak için hazırlanan dokümana ne ad verilir?",
+            new[] { "Patlamadan Korunma Dokümanı (PKD)", "Yangın Tahliye Planı", "Acil Durum Eylem Planı", "Malzeme Güvenlik Bilgi Formu (MSDS)" }, 0),
+    };
+
     private sealed class PoolFile
     {
         public List<PoolCategory> Categories { get; set; } = new();
@@ -221,43 +254,40 @@ public static class DbInitializer
 
         if (isgCategory is null) return;
 
-        var hasLevel2 = await context.Questions.AnyAsync(q => q.Level == 2);
-        if (hasLevel2) return;
+        var existingLevel2Quiz = await context.Quizzes
+            .FirstOrDefaultAsync(q => q.Level == 2);
 
-        var level2Questions = new (string Text, string[] Options, int CorrectIndex)[]
+        var existingLevel2Questions = await context.Questions
+            .Where(q => q.Level == 2)
+            .ToListAsync();
+
+        var expectedTexts = new HashSet<string>(level2QuestionsData.Select(q => q.Text));
+
+        bool allMatch = existingLevel2Questions.Count == 10 &&
+            existingLevel2Questions.All(q => expectedTexts.Contains(q.Text));
+
+        if (allMatch) return;
+
+        foreach (var q in existingLevel2Questions)
         {
-            ("İş Sağlığı ve Güvenliği Kanunu'na (6331) göre \"Çok Tehlikeli\" sınıfta yer alan bir işyerinde iş güvenliği uzmanının çalışan başına ayda en az kaç dakika zaman ayırması gerekir?",
-                new[] { "10 dk", "15 dk", "40 dk", "60 dk" }, 2),
+            q.Level = 1;
+            q.QuizId = null;
+        }
+        await context.SaveChangesAsync();
 
-            ("İşyerlerinde acil durum tahliye tatbikatları mevzuata göre en geç hangi sıklıkla tekrarlanmalıdır?",
-                new[] { "6 ayda bir", "Yılda en az 1 defa", "2 yılda bir", "3 yılda bir" }, 1),
+        if (existingLevel2Quiz != null)
+        {
+            var linkedToL2 = await context.Questions
+                .Where(q => q.QuizId == existingLevel2Quiz.Id)
+                .ToListAsync();
+            foreach (var q in linkedToL2)
+            {
+                q.QuizId = null;
+            }
+            await context.SaveChangesAsync();
+        }
 
-            ("İş kazası meydana geldiğinde işverenin bu kazayı SGK'ya bildirme süresi en geç kaç iş günüdür?",
-                new[] { "1 iş günü", "2 iş günü", "3 iş günü", "5 iş günü" }, 2),
-
-            ("Yüksekte çalışmada kullanılan düşmeyi durdurma sistemlerinin (Lanyard/Yaşam Hattı) temel amacı nedir?",
-                new[] { "Düşmeyi tamamen engellemek", "Düşme gerçekleşirse çalışanın yere çarpmasını önleyip darbe kuvvetini emmek", "Çalışanın kaymasını engellemek", "Çalışma alanını aydınlatmak" }, 1),
-
-            ("Kapalı/sınırlı alanlarda (depo, tank, kuyu vb.) çalışmaya başlamadan önce yapılması gereken ilk ve en kritik kontrol nedir?",
-                new[] { "Ortam gaz ve oksijen ölçümü yapmak", "Aydınlatmayı açmak", "Baret takmak", "İçeriyi suyla yıkamak" }, 0),
-
-            ("Kişisel Koruyucu Donanımların (KKD) kullanımıyla ilgili hangisi doğrudur?",
-                new[] { "KKD'ler toplu korunma önlemlerinin yerine geçer", "Toplu korunma önlemleri alınamadığında veya yetersiz kaldığında KKD kullanılır", "KKD ücreti çalışanın maaşından kesilir", "KKD seçimi sadece çalışanın isteğine bağlıdır" }, 1),
-
-            ("İşyerinde risk değerlendirmesi yapılırken uygulanması gereken ilk aşama hangisidir?",
-                new[] { "Risk analizi", "Tehlikelerin tanımlanması", "Önlemlerin belirlenmesi", "Düzeltici faaliyetler" }, 1),
-
-            ("Basınçlı kapların (kompresör, hava tankı vb.) periyodik kontrolleri mevzuata göre en geç hangi sürelerde yapılmalıdır?",
-                new[] { "6 ay", "1 yıl", "2 yıl", "5 yıl" }, 1),
-
-            ("İş hijyeni ölçümlerinde \"TWA\" (Time Weighted Average) ifadesi neyi temsil eder?",
-                new[] { "Anlık en yüksek maruziyet değerini", "8 saatlik vardiya için zaman ağırlıklı ortalama maruziyet değerini", "15 dakikalık kısa süreli maruziyet değerini", "Haftalık toplam çalışma süresini" }, 1),
-
-            ("Patlayıcı ortamların oluşmasını önlemek ve ATEX standartlarına uymak için hazırlanan dokümana ne ad verilir?",
-                new[] { "Patlamadan Korunma Dokümanı (PKD)", "Yangın Tahliye Planı", "Acil Durum Eylem Planı", "Malzeme Güvenlik Bilgi Formu (MSDS)" }, 0),
-        };
-
-        foreach (var (text, options, correctIndex) in level2Questions)
+        foreach (var (text, options, correctIndex) in level2QuestionsData)
         {
             context.Questions.Add(new Question
             {

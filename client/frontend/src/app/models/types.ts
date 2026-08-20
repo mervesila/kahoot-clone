@@ -72,7 +72,6 @@ export interface QuizDto {
   passScore: number;
   isDynamic: boolean;
   defaultTimeLimitInSeconds: number;
-  jokersEnabled: boolean;
 }
 
 export interface CategoryDto {
@@ -130,7 +129,6 @@ export interface QuizDetailDto {
   passScore: number;
   isDynamic: boolean;
   defaultTimeLimitInSeconds: number;
-  jokersEnabled: boolean;
   questions: QuizQuestionDto[];
 }
 
@@ -142,7 +140,6 @@ export interface UpdateQuizRequest {
   level: number;
   passScore: number;
   defaultTimeLimitInSeconds: number;
-  jokersEnabled: boolean;
 }
 
 export interface CreateQuizRequest {
@@ -153,7 +150,6 @@ export interface CreateQuizRequest {
   level?: number;
   passScore?: number;
   defaultTimeLimitInSeconds?: number;
-  jokersEnabled?: boolean;
 }
 
 export interface ScoreboardPlayerDto {
@@ -175,7 +171,6 @@ export interface ScoreboardTeamDto {
 export interface ScoreboardDto {
   sessionId: string;
   quizTitle: string;
-  isTeamMode: boolean;
   individual: ScoreboardPlayerDto[];
   teams: ScoreboardTeamDto[];
 }
@@ -220,12 +215,6 @@ export interface AnswerSubmittedEvent {
   isCorrect: boolean;
   scoreEarned: number;
   newTotalScore: number;
-}
-
-export interface JokerUsedEvent {
-  sessionId: string;
-  playerId: string;
-  jokerType: 'FiftyFifty' | 'DoublePoints' | 'ExtraTime';
 }
 
 export interface GameFinishedEvent {

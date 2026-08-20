@@ -27,27 +27,4 @@
       }
     </ol>
   </div>
-
-  @if (scoreboard().isTeamMode && scoreboard().teams.length > 0) {
-    <div class="score-box">
-      <div class="score-box-head">Takım Skoru</div>
-      <div class="teams-grid">
-        @for (team of scoreboard().teams; track team.teamName; let index = $index) {
-          <div class="team-card">
-            <div class="flex-between">
-              <span class="team-rank">#{{ index + 1 }}</span>
-              <div>
-                <p class="score-name">{{ team.teamName }}</p>
-                <p class="score-sub">{{ team.playerCount }} katılımcı · {{ team.totalScore }} puan</p>
-              </div>
-            </div>
-            <div class="text-center">
-              <p class="team-avg">{{ team.averageScore | number: '1.0-0' }}</p>
-              <p class="score-sub">ort.</p>
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-  }
 </div>

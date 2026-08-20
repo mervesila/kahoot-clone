@@ -7,7 +7,6 @@ export interface HostSession {
   quizId: string;
   pinCode: string;
   quizTitle: string;
-  isTeamMode: boolean;
 }
 
 export interface PlayerSession {
@@ -16,7 +15,6 @@ export interface PlayerSession {
   quizTitle: string;
   playerId: string;
   playerName: string;
-  isTeamMode: boolean;
   teamName?: string | null;
   avatar: Avatar;
 }

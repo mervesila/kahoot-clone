@@ -15,7 +15,6 @@ interface SessionRecord {
   quizId: string;
   quizTitle: string;
   pinCode: string;
-  isTeamMode: boolean;
 }
 
 /**
@@ -83,7 +82,6 @@ export class RelayEventHandler implements OnDestroy {
         quizId: hostSession?.quizId ?? '',
         quizTitle: hostSession?.quizTitle ?? 'Sınav',
         pinCode,
-        isTeamMode: hostSession?.isTeamMode ?? false,
       });
       this.persist();
     }

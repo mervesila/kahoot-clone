@@ -51,7 +51,6 @@ export class QuizCreateDialogComponent {
   protected readonly passScore = signal(70);
   protected readonly defaultTime = signal(30);
   protected readonly isActive = signal(true);
-  protected readonly jokersEnabled = signal(true);
 
   protected readonly timeOptions = [10, 20, 30, 60];
 
@@ -94,7 +93,6 @@ export class QuizCreateDialogComponent {
         level: this.level(),
         passScore: this.passScore(),
         defaultTimeLimitInSeconds: this.defaultTime(),
-        jokersEnabled: this.jokersEnabled(),
       });
       this.dialogRef.close({
         id,

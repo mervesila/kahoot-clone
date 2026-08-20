@@ -47,8 +47,6 @@ export class AdminDashboardComponent {
   readonly error = signal('');
   readonly message = signal('');
 
-  readonly teamMode = signal(false);
-
   readonly deleteTarget = signal<QuizDto | null>(null);
   readonly deleting = signal(false);
 

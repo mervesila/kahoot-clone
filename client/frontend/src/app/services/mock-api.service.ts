@@ -214,7 +214,6 @@ const demoQuizzes: DemoQuiz[] = [
     passScore: 70,
     isDynamic: true,
     defaultTimeLimitInSeconds: 30,
-    jokersEnabled: true,
   },
   {
     id: 'q-isg-2',
@@ -227,7 +226,6 @@ const demoQuizzes: DemoQuiz[] = [
     passScore: 70,
     isDynamic: true,
     defaultTimeLimitInSeconds: 30,
-    jokersEnabled: true,
   },
 ];
 
@@ -235,7 +233,7 @@ const demoQuizzes: DemoQuiz[] = [
 export class MockApiService extends ApiService {
   private readonly categories: CategoryDto[] = structuredClone(demoCategories);
   private readonly quizzes: DemoQuiz[] = structuredClone(demoQuizzes);
-  private readonly sessions = new Map<string, { quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean }>();
+  private readonly sessions = new Map<string, { quizId: string; quizTitle: string; pinCode: string }>();
   private readonly sessionQuestionsMap = new Map<string, SessionQuestionDto[]>();
   private readonly sessionStates = new Map<string, GameSessionStateDto>();
   private readonly answers = new Map<string, AnswerRecord>();
@@ -324,7 +322,7 @@ export class MockApiService extends ApiService {
 
   private announce(
     sessionId: string,
-    session: { quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean },
+    session: { quizId: string; quizTitle: string; pinCode: string },
     force = false,
   ): void {
     const now = Date.now();
@@ -345,7 +343,7 @@ export class MockApiService extends ApiService {
     try {
       const rawSessions = localStorage.getItem(MockApiService.SESSIONS_KEY);
       if (rawSessions) {
-        const entries: Array<{ id: string; quizId: string; quizTitle: string; pinCode: string; isTeamMode: boolean }> =
+        const entries: Array<{ id: string; quizId: string; quizTitle: string; pinCode: string }> =
           JSON.parse(rawSessions);
         for (const entry of entries) {
           this.sessions.set(entry.id, entry);
@@ -477,7 +475,6 @@ export class MockApiService extends ApiService {
       passScore: quiz.passScore,
       isDynamic: quiz.isDynamic,
       defaultTimeLimitInSeconds: quiz.defaultTimeLimitInSeconds,
-      jokersEnabled: quiz.jokersEnabled,
       questions: drawQuestions(quiz.categoryId, 10).map((spec, index) =>
         toQuizQuestion(spec, index + 1),
       ),
@@ -497,7 +494,6 @@ export class MockApiService extends ApiService {
       passScore: data.passScore ?? 70,
       isDynamic: true,
       defaultTimeLimitInSeconds: data.defaultTimeLimitInSeconds ?? 30,
-      jokersEnabled: data.jokersEnabled ?? true,
     });
     return { id };
   }
@@ -546,7 +542,7 @@ export class MockApiService extends ApiService {
   }
 
   // --- Oturum akışı (canlı) ---
-  async createGameSession(data: { quizId: string; isTeamMode: boolean }): Promise<GameSessionDto> {
+  async createGameSession(data: { quizId: string }): Promise<GameSessionDto> {
     this.sessionCounter += 1;
     const quiz = this.quizzes.find((q) => q.id === data.quizId);
     const id = `demo-session-${Date.now().toString(36)}${this.sessionCounter}`;
@@ -559,13 +555,13 @@ export class MockApiService extends ApiService {
       id,
       drawn.map((spec, index) => toSessionQuestion(spec, index + 1, categoryName)),
     );
-    this.sessions.set(id, { quizId: data.quizId, quizTitle, pinCode, isTeamMode: data.isTeamMode });
+    this.sessions.set(id, { quizId: data.quizId, quizTitle, pinCode });
     this.sessionStates.set(id, { id, status: 'Waiting', currentQuestionOrderNo: 0, startedAt: null, finishedAt: null });
     this.persist();
     this.relayDisconnects.push(
       this.relay.connect(pinCode, true, (msg) => this.handleRelayMessage(id, pinCode, msg)),
     );
-    this.announce(id, { quizId: data.quizId, quizTitle, pinCode, isTeamMode: data.isTeamMode });
+    this.announce(id, { quizId: data.quizId, quizTitle, pinCode });
     return { id, quizId: data.quizId, pinCode, status: 'Waiting' };
   }
 

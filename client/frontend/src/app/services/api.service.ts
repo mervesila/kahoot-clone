@@ -54,7 +54,6 @@ export function setToken(token: string | null): void {
 
 export interface CreateGameSessionRequest {
   quizId: string;
-  isTeamMode: boolean;
 }
 
 export interface JoinGameSessionRequest {

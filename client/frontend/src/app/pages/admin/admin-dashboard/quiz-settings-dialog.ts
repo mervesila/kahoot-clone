@@ -47,7 +47,6 @@ export class QuizSettingsDialogComponent {
   readonly passScore = signal(this.quiz.passScore);
   readonly defaultTime = signal(this.quiz.defaultTimeLimitInSeconds);
   readonly isActive = signal(this.quiz.isActive);
-  readonly jokersEnabled = signal(this.quiz.jokersEnabled);
 
   protected readonly timeOptions = [10, 20, 30, 60];
 
@@ -90,7 +89,6 @@ export class QuizSettingsDialogComponent {
         level: this.level(),
         passScore: this.passScore(),
         defaultTimeLimitInSeconds: this.defaultTime(),
-        jokersEnabled: this.jokersEnabled(),
       };
       await this.api.updateQuiz(this.quiz.id, updates);
       this.dialogRef.close(updates);

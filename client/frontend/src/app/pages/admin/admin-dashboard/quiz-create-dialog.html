@@ -83,9 +83,6 @@
     <mat-slide-toggle [checked]="isActive()" (change)="isActive.set($event.checked)">
       Sınav Aktif
     </mat-slide-toggle>
-    <mat-slide-toggle [checked]="jokersEnabled()" (change)="jokersEnabled.set($event.checked)">
-      Jokerlere İzin Ver
-    </mat-slide-toggle>
   </div>
 
   @if (error()) {

@@ -5,29 +5,14 @@
     </div>
 
     <div class="glass auth-form anim-fade-in-up">
-      <div class="auth-tabs">
-        <button
-          type="button"
-          class="auth-tab {{ mode() === 'login' ? 'active' : '' }}"
-          (click)="setMode('login')"
-        >
-          Giriş
-        </button>
-        <button
-          type="button"
-          class="auth-tab {{ mode() === 'register' ? 'active' : '' }}"
-          (click)="setMode('register')"
-        >
-          Kayıt Ol
-        </button>
-      </div>
+      <h2 class="auth-title">Yönetici Girişi</h2>
 
       <form (ngSubmit)="handleSubmit()" autocomplete="off" class="auth-fields">
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Sicil Numarası</mat-label>
           <input
             matInput
-            placeholder="Örn: ADM100"
+            placeholder="Örn: admin1"
             autocomplete="username"
             [value]="registrationNumber()"
             (input)="registrationNumber.set($any($event.target).value)"
@@ -37,52 +22,11 @@
           }
         </mat-form-field>
 
-        @if (mode() === 'register') {
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Ad</mat-label>
-            <input
-              matInput
-              autocomplete="given-name"
-              [value]="firstName()"
-              (input)="firstName.set($any($event.target).value)"
-            />
-            @if (firstNameError()) {
-              <mat-error>{{ firstNameError() }}</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Soyad</mat-label>
-            <input
-              matInput
-              autocomplete="family-name"
-              [value]="lastName()"
-              (input)="lastName.set($any($event.target).value)"
-            />
-            @if (lastNameError()) {
-              <mat-error>{{ lastNameError() }}</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Departman</mat-label>
-            <input
-              matInput
-              autocomplete="organization"
-              [value]="department()"
-              (input)="department.set($any($event.target).value)"
-            />
-            @if (departmentError()) {
-              <mat-error>{{ departmentError() }}</mat-error>
-            }
-          </mat-form-field>
-        }
-
         <mat-form-field appearance="outline" class="w-full">
-          <mat-label>Parola</mat-label>
+          <mat-label>Şifre</mat-label>
           <input
             matInput
-            [type]="mode() === 'register' ? 'new-password' : 'password'"
+            type="password"
             autocomplete="current-password"
             [value]="password()"
             (input)="password.set($any($event.target).value)"
@@ -91,22 +35,6 @@
             <mat-error>{{ passwordError() }}</mat-error>
           }
         </mat-form-field>
-
-        @if (mode() === 'register') {
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Parola (Tekrar)</mat-label>
-            <input
-              matInput
-              type="password"
-              autocomplete="new-password"
-              [value]="passwordConfirm()"
-              (input)="passwordConfirm.set($any($event.target).value)"
-            />
-            @if (passwordConfirmError()) {
-              <mat-error>{{ passwordConfirmError() }}</mat-error>
-            }
-          </mat-form-field>
-        }
 
         <app-alert [message]="error()" />
 
@@ -117,7 +45,7 @@
           class="auth-submit"
           [disabled]="loading()"
         >
-          {{ loading() ? 'İşleniyor…' : mode() === 'login' ? 'Giriş Yap' : 'Kayıt Ol' }}
+          {{ loading() ? 'Giriş yapılıyor…' : 'Giriş Yap' }}
         </button>
       </form>
     </div>

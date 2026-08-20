@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TKI.Application.Features.Auth.Commands.Login;
-using TKI.Application.Features.Auth.Commands.RegisterAdmin;
 
 namespace TKI.WebAPI.Controllers.Auth;
 
@@ -14,13 +13,6 @@ public class AuthController : ControllerBase
     public AuthController(IMediator mediator)
     {
         _mediator = mediator;
-    }
-
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterAdminCommand command)
-    {
-        var result = await _mediator.Send(command);
-        return Ok(result);
     }
 
     [HttpPost("login")]

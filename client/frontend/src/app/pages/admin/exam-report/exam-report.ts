@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { LogoComponent } from '../../../shared/logo/logo';
 import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiService } from '../../../services/api.service';
+import { AuthService } from '../../../services/auth.service';
 import type { ExamReportDto } from '../../../models/types';
 
 @Component({
@@ -17,6 +18,7 @@ export class ExamReportComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
 
   readonly loading = signal(true);
   readonly error = signal('');
@@ -47,5 +49,10 @@ export class ExamReportComponent implements OnInit {
 
   goBack(): void {
     void this.router.navigate(['/admin/dashboard']);
+  }
+
+  handleLogout(): void {
+    this.auth.logout();
+    void this.router.navigate(['/login'], { replaceUrl: true });
   }
 }

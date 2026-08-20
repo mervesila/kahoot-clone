@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { ApiService, setToken, type RegisterRequest } from './api.service';
+import { ApiService, setToken } from './api.service';
 import type { AuthResult } from '../models/types';
 
 export const USER_KEY = 'tki_admin_user';
@@ -32,11 +32,6 @@ export class AuthService {
 
   async login(registrationNumber: string, password: string): Promise<void> {
     const result = await this.api.login({ registrationNumber, password });
-    this.applyAuth(result);
-  }
-
-  async register(data: RegisterRequest): Promise<void> {
-    const result = await this.api.register(data);
     this.applyAuth(result);
   }
 

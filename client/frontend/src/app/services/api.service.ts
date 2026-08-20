@@ -75,14 +75,6 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface RegisterRequest {
-  registrationNumber: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  department: string;
-}
-
 export interface ImportQuestionPoolRequest {
   title: string;
   description?: string;
@@ -190,10 +182,6 @@ export class ApiService {
   // --- Auth ---
   login(data: LoginRequest): Promise<AuthResult> {
     return this.post<AuthResult>('/api/auth/login', data, false);
-  }
-
-  register(data: RegisterRequest): Promise<AuthResult> {
-    return this.post<AuthResult>('/api/auth/register', data, false);
   }
 
   // --- Categories / Quizzes ---

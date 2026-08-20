@@ -6,9 +6,6 @@ import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './services/auth.interceptor';
 import { ApiService } from './services/api.service';
-import { MockApiService } from './services/mock-api.service';
-import { RelayEventHandler } from './services/relay-event-handler.service';
-import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -16,7 +13,6 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideRouter(routes),
-    environment.demo ? { provide: ApiService, useClass: MockApiService } : ApiService,
-    environment.demo ? RelayEventHandler : [],
+    ApiService,
   ],
 };

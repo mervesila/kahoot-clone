@@ -94,7 +94,7 @@ export class AdminDashboardComponent {
   }
 
   async copyExamLink(quiz: QuizDto): Promise<void> {
-    const url = `${window.location.origin}/exam/${quiz.id}`;
+    const url = `${window.location.origin}/sinav`;
     try {
       await navigator.clipboard.writeText(url);
       this.message.set('Link kopyalandı!');

@@ -217,15 +217,12 @@ public static class DbInitializer
             .Select(c => (int?)c.Id)
             .FirstOrDefaultAsync();
 
-        if (!await context.Quizzes.AnyAsync(q => q.Level == 1))
-        {
-            var poolQuestions = await context.Questions
-                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null)
-                .OrderBy(q => q.Id)
-                .Take(10)
-                .ToListAsync();
+        var level1Quiz = await context.Quizzes
+            .FirstOrDefaultAsync(q => q.Level == 1);
 
-            var quiz = new Quiz
+        if (level1Quiz is null)
+        {
+            level1Quiz = new Quiz
             {
                 Title = LevelOneQuizTitle,
                 Description = "50 soruluk İSG havuzundan her oturumda rastgele 10 soru ile dinamik olarak uygulanan seviye 1 sınavı.",
@@ -236,26 +233,38 @@ public static class DbInitializer
                 DefaultTimeLimitInSeconds = 30,
                 JokersEnabled = true
             };
-            context.Quizzes.Add(quiz);
+            context.Quizzes.Add(level1Quiz);
             await context.SaveChangesAsync();
+        }
 
-            for (int i = 0; i < poolQuestions.Count; i++)
+        var l1LinkedCount = await context.Questions.CountAsync(q => q.QuizId == level1Quiz.Id);
+        if (l1LinkedCount < 10)
+        {
+            var linkedIds = await context.Questions
+                .Where(q => q.QuizId == level1Quiz.Id)
+                .Select(q => q.Id)
+                .ToListAsync();
+
+            var poolQuestions = await context.Questions
+                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null && !linkedIds.Contains(q.Id))
+                .OrderBy(q => q.Id)
+                .Take(10 - l1LinkedCount)
+                .ToListAsync();
+
+            foreach (var q in poolQuestions)
             {
-                poolQuestions[i].QuizId = quiz.Id;
-                poolQuestions[i].OrderNo = i + 1;
+                q.QuizId = level1Quiz.Id;
+                q.OrderNo = l1LinkedCount + poolQuestions.IndexOf(q) + 1;
             }
             await context.SaveChangesAsync();
         }
 
-        if (!await context.Quizzes.AnyAsync(q => q.Level == 2))
-        {
-            var poolQuestions = await context.Questions
-                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null)
-                .OrderBy(q => q.Id)
-                .Take(10)
-                .ToListAsync();
+        var level2Quiz = await context.Quizzes
+            .FirstOrDefaultAsync(q => q.Level == 2);
 
-            var quiz = new Quiz
+        if (level2Quiz is null)
+        {
+            level2Quiz = new Quiz
             {
                 Title = LevelTwoQuizTitle,
                 Description = "Seviye 1'de en az %70 puan alanların katılabildiği, kalan havuzdan rastgele 10 soru ile uygulanan seviye 2 sınavı.",
@@ -266,13 +275,28 @@ public static class DbInitializer
                 DefaultTimeLimitInSeconds = 30,
                 JokersEnabled = true
             };
-            context.Quizzes.Add(quiz);
+            context.Quizzes.Add(level2Quiz);
             await context.SaveChangesAsync();
+        }
 
-            for (int i = 0; i < poolQuestions.Count; i++)
+        var l2LinkedCount = await context.Questions.CountAsync(q => q.QuizId == level2Quiz.Id);
+        if (l2LinkedCount < 10)
+        {
+            var linkedIds = await context.Questions
+                .Where(q => q.QuizId == level2Quiz.Id)
+                .Select(q => q.Id)
+                .ToListAsync();
+
+            var poolQuestions = await context.Questions
+                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null && !linkedIds.Contains(q.Id))
+                .OrderBy(q => q.Id)
+                .Take(10 - l2LinkedCount)
+                .ToListAsync();
+
+            foreach (var q in poolQuestions)
             {
-                poolQuestions[i].QuizId = quiz.Id;
-                poolQuestions[i].OrderNo = i + 1;
+                q.QuizId = level2Quiz.Id;
+                q.OrderNo = l2LinkedCount + poolQuestions.IndexOf(q) + 1;
             }
             await context.SaveChangesAsync();
         }

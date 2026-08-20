@@ -280,6 +280,10 @@ export class ApiService {
     return this.post<{ quizId: string; isActive: boolean }>(`/api/exam/toggle-status/${quizId}`, undefined, false);
   }
 
+  cleanupOldData(): Promise<{ deleted: number; answersDeleted: number }> {
+    return this.post<{ deleted: number; answersDeleted: number }>('/api/admin/exam/cleanup-old-data', undefined);
+  }
+
   // --- Rapor ---
   getSessionQuestions(sessionId: string): Promise<SessionQuestionDto[]> {
     return this.get<SessionQuestionDto[]>(

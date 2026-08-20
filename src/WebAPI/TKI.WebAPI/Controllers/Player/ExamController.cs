@@ -195,9 +195,19 @@ public class ExamController : PlayerBaseController
             .Where(a => a.QuizId == quizId)
             .ToListAsync();
 
-        var totalParticipants = attempts.Count;
-        var passedCount = attempts.Count(a => a.IsPassed);
-        var averageScore = attempts.Any() ? attempts.Average(a => a.MaxPossibleScore > 0 ? (double)a.TotalScore / a.MaxPossibleScore * 100 : 0) : 0;
+        var totalParticipants = attempts
+            .Select(a => a.StudentName)
+            .Distinct()
+            .Count();
+        var passedCount = attempts
+            .GroupBy(a => a.StudentName)
+            .Count(g => g.Any(a => a.IsPassed));
+        var failedCount = totalParticipants - passedCount;
+        var averageScore = attempts.Any()
+            ? attempts.Average(a => a.MaxPossibleScore > 0
+                ? (double)a.TotalScore / a.MaxPossibleScore * 100
+                : 0)
+            : 0;
 
         var questionStats = quiz.Questions.Select(q =>
         {
@@ -255,6 +265,29 @@ public class ExamController : PlayerBaseController
         await _db.SaveChangesAsync();
 
         return Ok(new { quizId = quiz.Id, isActive = quiz.IsActive });
+    }
+
+    [HttpPost("/api/admin/exam/cleanup-old-data")]
+    public async Task<IActionResult> CleanupOldData()
+    {
+        var oldAttempts = await _db.ExamAttempts
+            .Where(a => a.MaxPossibleScore == 10000)
+            .ToListAsync();
+
+        if (oldAttempts.Count == 0)
+            return Ok(new { deleted = 0 });
+
+        var oldIds = oldAttempts.Select(a => a.Id).ToList();
+
+        var oldAnswers = await _db.ExamAnswers
+            .Where(a => oldIds.Contains(a.ExamAttemptId))
+            .ToListAsync();
+
+        _db.ExamAnswers.RemoveRange(oldAnswers);
+        _db.ExamAttempts.RemoveRange(oldAttempts);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { deleted = oldAttempts.Count, answersDeleted = oldAnswers.Count });
     }
 
     private static ExamQuestionDto MapQuestion(Question q, int index, int total)

@@ -25,7 +25,7 @@ public static class DbInitializer
     private const int PassScore = 70;
 
     private const string SeedAdminRegistrationNumber = "admin1";
-    private const string SeedAdminDefaultPassword = "123456";
+    private const string SeedAdminDefaultPassword = "1234567A";
 
     private sealed class PoolFile
     {

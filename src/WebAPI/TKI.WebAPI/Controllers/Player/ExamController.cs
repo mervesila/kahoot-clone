@@ -10,8 +10,6 @@ public class ExamController : PlayerBaseController
 {
     private readonly IApplicationDbContext _db;
     private const int TimeLimitPerQuestionSeconds = 40;
-    private const int BasePointsPerQuestion = 1000;
-    private const int SpeedBonusMultiplier = 2;
 
     public ExamController(IApplicationDbContext db) => _db = db;
 
@@ -34,7 +32,7 @@ public class ExamController : PlayerBaseController
             RegistrationNumber = request.RegistrationNumber,
             StartedAt = DateTime.UtcNow,
             CurrentQuestionIndex = 0,
-            MaxPossibleScore = quiz.Questions.Count * BasePointsPerQuestion,
+            MaxPossibleScore = quiz.Questions.Count,
         };
         _db.ExamAttempts.Add(attempt);
         await _db.SaveChangesAsync();
@@ -88,9 +86,7 @@ public class ExamController : PlayerBaseController
 
             if (isCorrect)
             {
-                double fractionUsed = Math.Clamp((double)request.TimeSpentMs / (TimeLimitPerQuestionSeconds * 1000), 0, 1);
-                double remainingFraction = 1.0 - fractionUsed;
-                score = (int)(BasePointsPerQuestion * (1 + remainingFraction * SpeedBonusMultiplier));
+                score = 1;
             }
         }
 
@@ -113,7 +109,8 @@ public class ExamController : PlayerBaseController
         {
             attempt.FinishedAt = DateTime.UtcNow;
             attempt.Status = "Finished";
-            attempt.IsPassed = attempt.MaxPossibleScore > 0 && (double)attempt.TotalScore / attempt.MaxPossibleScore >= 0.7;
+            double percentage = attempt.MaxPossibleScore > 0 ? (double)attempt.TotalScore / attempt.MaxPossibleScore * 100 : 0;
+            attempt.IsPassed = percentage >= attempt.Quiz.PassScore;
             attempt.CurrentQuestionIndex = nextIndex;
         }
         else
@@ -269,7 +266,7 @@ public class ExamController : PlayerBaseController
             Index = index,
             TotalQuestions = total,
             TimeLimitInSeconds = TimeLimitPerQuestionSeconds,
-            Points = BasePointsPerQuestion,
+            Points = 1,
             Options = q.Options.Select(o => new ExamOptionDto
             {
                 OptionId = o.Id,

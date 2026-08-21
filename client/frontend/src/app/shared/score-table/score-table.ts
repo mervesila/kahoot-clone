@@ -1,10 +1,9 @@
 import { Component, input } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import type { ScoreboardDto } from '../../models/types';
 
 @Component({
   selector: 'app-score-table',
-  imports: [DecimalPipe],
+  imports: [],
   templateUrl: './score-table.html',
   styleUrl: './score-table.scss',
 })

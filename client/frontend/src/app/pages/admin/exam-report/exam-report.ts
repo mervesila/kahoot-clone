@@ -7,6 +7,7 @@ import { SpinnerComponent } from '../../../shared/spinner/spinner';
 import { ApiService } from '../../../services/api.service';
 import { AuthService } from '../../../services/auth.service';
 import type { ExamReportDto } from '../../../models/types';
+import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-exam-report',
@@ -45,6 +46,33 @@ export class ExamReportComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  exportToExcel(): void {
+    const r = this.report();
+    if (!r) return;
+
+    const rows = r.leaderboard.map((entry, i) => ({
+      'Sira': i + 1,
+      'Ad Soyad': entry.studentName,
+      'Sicil No': entry.registrationNumber,
+      'Puan': entry.totalScore + ' / ' + entry.maxPossibleScore,
+      'Yuzde': '%' + entry.percentage.toFixed(1),
+      'Durum': entry.isPassed ? 'GECTI' : 'KALDI',
+      'Deneme Sayisi': entry.attemptCount,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 12 },
+      { wch: 8 }, { wch: 8 }, { wch: 12 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sonuclar');
+
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, 'TKI_Akademi_Sinav_Sonuclari_' + today + '.xlsx');
   }
 
   goBack(): void {

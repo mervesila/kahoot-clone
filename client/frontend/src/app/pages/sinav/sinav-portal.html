@@ -12,7 +12,7 @@
       <div class="entry-form">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Adınız Soyadınız</mat-label>
-          <input matInput [ngModel]="studentName()" (ngModelChange)="studentName.set($event)" placeholder="Örn: Ali Veli" />
+          <input matInput [ngModel]="studentName()" (ngModelChange)="studentName.set($event)" placeholder="Örn: Sıla Akyol" />
         </mat-form-field>
 
         <button mat-flat-button color="primary" class="full-width start-btn" (click)="startExam()">
@@ -48,7 +48,12 @@
         </p>
         <p class="detail">{{ examResult()!.correctCount }} / {{ examResult()!.totalQuestions }} doğru</p>
       </div>
-      <p class="close-hint">Sınavınız tamamlanmıştır. Bu ekranı kapatabilirsiniz.</p>
+      @if (canDownloadCertificate()) {
+        <button mat-stroked-button color="primary" class="cert-btn" (click)="downloadCertificate()">
+          ISG Basari Sertifikasi Indir (PDF)
+        </button>
+      }
+      <p class="close-hint">Sinaviniz tamamlanmistir. Bu ekrani kapatabilirsiniz.</p>
       @if (entryError()) {
         <div class="entry-error">{{ entryError() }}</div>
       }

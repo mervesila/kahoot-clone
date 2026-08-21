@@ -298,3 +298,146 @@
     background: #f0fdf4 !important;
   }
 }
+
+/* ── Certificate Print Area ── */
+.cert-print-area {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 1122px;
+  height: 794px;
+  background: #fff;
+  font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.cert-outer-border {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #1a3a6a 0%, #0d2240 50%, #1a3a6a 100%);
+}
+
+.cert-inner-border {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  border: 3px solid #d4a017;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.cert-content {
+  width: 100%;
+  height: 100%;
+  border: 1.5px solid #b8860b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 36px 48px 28px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.cert-header {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: #1a3a6a;
+  text-transform: uppercase;
+}
+
+.cert-title {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  background: linear-gradient(180deg, #d4a017 0%, #b8860b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cert-divider {
+  width: 260px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #d4a017, transparent);
+}
+
+.cert-body {
+  font-size: 15px;
+  color: #4a4a4a;
+  text-align: center;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.cert-name {
+  font-size: 34px;
+  font-weight: 700;
+  color: #1a3a6a;
+  border-bottom: 2px solid #d4a017;
+  padding-bottom: 6px;
+  letter-spacing: 2px;
+}
+
+.cert-details {
+  display: flex;
+  gap: 48px;
+  margin-top: 4px;
+}
+
+.cert-detail-item {
+  text-align: center;
+}
+
+.cert-detail-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.cert-detail-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a3a6a;
+}
+
+.cert-badge {
+  margin: 0;
+}
+
+.cert-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.cert-sign {
+  text-align: center;
+}
+
+.cert-sign-line {
+  width: 220px;
+  height: 1px;
+  background: #333;
+  margin: 0 auto 6px;
+}
+
+.cert-sign span {
+  font-size: 11px;
+  color: #555;
+  letter-spacing: 1px;
+}
+
+.cert-verify {
+  font-size: 9px;
+  color: #999;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}

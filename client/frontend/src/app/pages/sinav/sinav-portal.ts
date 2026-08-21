@@ -1,7 +1,7 @@
-import { Component, ChangeDetectorRef, DestroyRef, inject, NgZone, signal, computed, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, DestroyRef, inject, NgZone, signal, computed, OnInit, ElementRef, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DecimalPipe, DatePipe } from '@angular/common';
+import { DecimalPipe, DatePipe, SlicePipe, UpperCasePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,6 +11,7 @@ import { ApiService, ApiError } from '../../services/api.service';
 import { AudioService } from '../../services/audio.service';
 import type { ExamQuestionDto, ExamStartResult, SubmitExamAnswerResult, ExamResultDto } from '../../models/types';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 @Component({
   selector: 'app-sinav-portal',
@@ -23,6 +24,8 @@ import jsPDF from 'jspdf';
     SpinnerComponent,
     DecimalPipe,
     DatePipe,
+    SlicePipe,
+    UpperCasePipe,
   ],
   templateUrl: './sinav-portal.html',
   styleUrl: './sinav-portal.scss',
@@ -64,6 +67,8 @@ export class SinavPortalComponent implements OnInit {
     const result = this.examResult();
     return result?.isPassed && this.examLevel() === 2;
   });
+
+  readonly certTemplate = viewChild<ElementRef<HTMLElement>>('certTemplate');
 
   ngOnInit(): void {
     sessionStorage.removeItem('sinav_student');
@@ -221,72 +226,30 @@ export class SinavPortalComponent implements OnInit {
     this.step.set('entry');
   }
 
-  downloadCertificate(): void {
+  async downloadCertificate(): Promise<void> {
     const result = this.examResult();
     const name = this.studentName().trim();
     if (!result || !name) return;
 
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const w = doc.internal.pageSize.getWidth();
-    const h = doc.internal.pageSize.getHeight();
+    const el = this.certTemplate()?.nativeElement;
+    if (!el) return;
 
-    doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, w, h, 'F');
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
 
-    doc.setDrawColor(30, 80, 140);
-    doc.setLineWidth(1.5);
-    doc.rect(10, 10, w - 20, h - 20);
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
 
-    doc.setDrawColor(30, 80, 140);
-    doc.setLineWidth(0.5);
-    doc.rect(14, 14, w - 28, h - 28);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(26);
-    doc.setTextColor(30, 80, 140);
-    doc.text('TKI AKADEMI', w / 2, 35, { align: 'center' });
-
-    doc.setFontSize(18);
-    doc.setTextColor(60, 60, 60);
-    doc.text('ISG Basari Sertifikasi', w / 2, 47, { align: 'center' });
-
-    doc.setDrawColor(30, 80, 140);
-    doc.setLineWidth(0.3);
-    doc.line(60, 52, w - 60, 52);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    doc.setTextColor(80, 80, 80);
-    doc.text('Bu belge, asagidaki kisiyi basari ile tamamlamistir:', w / 2, 65, { align: 'center' });
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.setTextColor(30, 30, 30);
-    doc.text(name.toUpperCase(), w / 2, 80, { align: 'center' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    doc.setTextColor(80, 80, 80);
-    doc.text('Sinav: ' + result.quizTitle, w / 2, 95, { align: 'center' });
-
-    const dateStr = result.finishedAt
-      ? new Date(result.finishedAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
-      : new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-    doc.text('Tarih: ' + dateStr, w / 2, 104, { align: 'center' });
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(30, 80, 140);
-    doc.text('Puan: %' + result.percentage.toFixed(1), w / 2, 116, { align: 'center' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text('TKI Akademi - Is Sagligi ve Guvenligi Egitim Merkezi', w / 2, h - 25, { align: 'center' });
-    doc.text('Bu sertifika dijital olarak olusturulmustur.', w / 2, h - 20, { align: 'center' });
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
 
     const safeName = name.replace(/\s+/g, '_');
-    doc.save('ISG_Seviye2_Sertifika_' + safeName + '.pdf');
+    pdf.save('ISG_Seviye2_Sertifika_' + safeName + '.pdf');
   }
 
   closeScreen(): void {

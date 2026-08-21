@@ -348,7 +348,7 @@ public static class DbInitializer
                 .ToListAsync();
 
             var poolQuestions = await context.Questions
-                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null && !linkedIds.Contains(q.Id))
+                .Where(q => q.CategoryId == isgCategoryId && q.QuizId == null && q.Level == 1 && !linkedIds.Contains(q.Id))
                 .OrderBy(q => q.Id)
                 .Take(10 - l1LinkedCount)
                 .ToListAsync();

@@ -22,9 +22,11 @@ public class ExamController : PlayerBaseController
 
         if (quiz == null) return NotFound("Sınav bulunamadı.");
         if (!quiz.IsActive) return BadRequest("Bu sınavın süresi dolmuş veya erişime kapatılmıştır.");
-        if (!quiz.Questions.Any()) return BadRequest("Soru bulunmuyor.");
 
-        var selectedIds = SelectRandomQuestionIds(quiz.Questions.ToList(), quiz.Questions.Count);
+        var levelQuestions = quiz.Questions.Where(q => q.Level == quiz.Level).ToList();
+        if (!levelQuestions.Any()) return BadRequest("Bu seviyede uygun soru bulunmuyor.");
+
+        var selectedIds = SelectRandomQuestionIds(levelQuestions, levelQuestions.Count);
         var selectedQuestions = GetQuestionsInOrder(quiz, selectedIds);
 
         var attempt = new ExamAttempt
@@ -116,10 +118,11 @@ public class ExamController : PlayerBaseController
 
     private async Task<IActionResult> CreateAndStartExam(Quiz quiz, string studentName, string registrationNumber)
     {
-        if (!quiz.Questions.Any())
-            return BadRequest("Soru bulunmuyor.");
+        var levelQuestions = quiz.Questions.Where(q => q.Level == quiz.Level).ToList();
+        if (!levelQuestions.Any())
+            return BadRequest("Bu seviyede uygun soru bulunmuyor.");
 
-        var selectedIds = SelectRandomQuestionIds(quiz.Questions.ToList(), quiz.Questions.Count);
+        var selectedIds = SelectRandomQuestionIds(levelQuestions, levelQuestions.Count);
         var selectedQuestions = GetQuestionsInOrder(quiz, selectedIds);
 
         var attempt = new ExamAttempt
@@ -419,7 +422,7 @@ public class ExamController : PlayerBaseController
 
     private static List<Question> GetQuestionsInOrder(Quiz quiz, string? selectedIds)
     {
-        var allQuestions = quiz.Questions.ToList();
+        var levelQuestions = quiz.Questions.Where(q => q.Level == quiz.Level).ToList();
 
         if (!string.IsNullOrWhiteSpace(selectedIds))
         {
@@ -427,7 +430,7 @@ public class ExamController : PlayerBaseController
                 .Select(Guid.Parse)
                 .ToList();
 
-            var questionMap = allQuestions.ToDictionary(q => q.Id);
+            var questionMap = levelQuestions.ToDictionary(q => q.Id);
             var ordered = new List<Question>();
             foreach (var id in idList)
             {
@@ -438,7 +441,7 @@ public class ExamController : PlayerBaseController
                 return ordered;
         }
 
-        return allQuestions.OrderBy(q => q.OrderNo).ToList();
+        return levelQuestions.OrderBy(q => q.OrderNo).ToList();
     }
 }
 

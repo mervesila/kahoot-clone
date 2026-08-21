@@ -29,35 +29,35 @@ public static class DbInitializer
 
     private static readonly (string Text, string[] Options, int CorrectIndex)[] level2QuestionsData = new[]
     {
-        ("İş Sağlığı ve Güvenliği Kanunu'na (6331) göre \"Çok Tehlikeli\" sınıfta yer alan bir işyerinde iş güvenliği uzmanının çalışan başına ayda en az kaç dakika zaman ayırması gerekir?",
-            new[] { "10 dk", "15 dk", "40 dk", "60 dk" }, 2),
+        ("Risk Değerlendirmesi Yönetmeliğine göre \"Çok Tehlikeli\" sınıftaki işyerlerinde risk değerlendirmesi en geç kaç yılda bir yenilenmelidir?",
+            new[] { "2 yılda bir", "4 yılda bir", "6 yılda bir", "Her yıl" }, 0),
 
-        ("İşyerlerinde acil durum tahliye tatbikatları mevzuata göre en geç hangi sıklıkla tekrarlanmalıdır?",
-            new[] { "6 ayda bir", "Yılda en az 1 defa", "2 yılda bir", "3 yılda bir" }, 1),
+        ("İş hijyeni ölçümlerinde \"STEL\" (Kısa Süreli Maruziyet Sınırı) süresi kaç dakikayı aşmamalıdır?",
+            new[] { "5 dakika", "15 dakika", "30 dakika", "60 dakika" }, 1),
 
-        ("İş kazası meydana geldiğinde işverenin bu kazayı SGK'ya bildirme süresi en geç kaç iş günüdür?",
+        ("6331 sayılı Kanuna göre İş Sağlığı ve Güvenliği Kurulu kurulması için en az kaç çalışan şartı aranır?",
+            new[] { "20 çalışan", "30 çalışan", "50 çalışan", "100 çalışan" }, 2),
+
+        ("Basınçlı kapların periyodik hidrostatik test basıncı, standart aksi belirtilmedikçe işletme basıncının kaç katı ile yapılır?",
+            new[] { "1.1 katı", "1.25 katı", "1.5 katı", "2.0 katı" }, 2),
+
+        ("Kapalı ve sınırlı alanlarda çalışabilmek için ortamdaki oksijen oranı en az yüzde kaç olmalıdır?",
+            new[] { "% 18.0", "% 19.5", "% 21.5", "% 23.0" }, 1),
+
+        ("ATEX 137 direktifine göre patlayıcı gaz/buhar ortamının sürekli veya uzun süreli bulunduğu alanlar hangi bölgedir?",
+            new[] { "Bölge 0 (Zone 0)", "Bölge 1", "Bölge 2", "Bölge 20" }, 0),
+
+        ("Kaldırma araçlarının (vinç, caraskal vb.) periyodik kontrol yük testi, beyan edilen yükün en az kaç katı ile yapılır?",
+            new[] { "1.1 katı", "1.25 katı", "1.5 katı", "2.0 katı" }, 1),
+
+        ("Bel tipi emniyet kemerleri hangi çalışma durumunda KULLANILMAZ?",
+            new[] { "Konumlandırma çalışmalarında", "Düşme riski olan dikey yüksekte çalışmalarda", "Yandaki direğe bağlanma durumunda", "Çalışma alanını kısıtlama durumunda" }, 1),
+
+        ("İşyerinde meydana gelen iş kazasının SGK'ya bildirim süresi en geç kaç iş günüdür?",
             new[] { "1 iş günü", "2 iş günü", "3 iş günü", "5 iş günü" }, 2),
 
-        ("Yüksekte çalışmada kullanılan düşmeyi durdurma sistemlerinin (Lanyard/Yaşam Hattı) temel amacı nedir?",
-            new[] { "Düşmeyi tamamen engellemek", "Düşme gerçekleşirse çalışanın yere çarpmasını önleyip darbe kuvvetini emmek", "Çalışanın kaymasını engellemek", "Çalışma alanını aydınlatmak" }, 1),
-
-        ("Kapalı/sınırlı alanlarda (depo, tank, kuyu vb.) çalışmaya başlamadan önce yapılması gereken ilk ve en kritik kontrol nedir?",
-            new[] { "Ortam gaz ve oksijen ölçümü yapmak", "Aydınlatmayı açmak", "Baret takmak", "İçeriyi suyla yıkamak" }, 0),
-
-        ("Kişisel Koruyucu Donanımların (KKD) kullanımıyla ilgili hangisi doğrudur?",
-            new[] { "KKD'ler toplu korunma önlemlerinin yerine geçer", "Toplu korunma önlemleri alınamadığında veya yetersiz kaldığında KKD kullanılır", "KKD ücreti çalışanın maaşından kesilir", "KKD seçimi sadece çalışanın isteğine bağlıdır" }, 1),
-
-        ("İşyerinde risk değerlendirmesi yapılırken uygulanması gereken ilk aşama hangisidir?",
-            new[] { "Risk analizi", "Tehlikelerin tanımlanması", "Önlemlerin belirlenmesi", "Düzeltici faaliyetler" }, 1),
-
-        ("Basınçlı kapların (kompresör, hava tankı vb.) periyodik kontrolleri mevzuata göre en geç hangi sürelerde yapılmalıdır?",
-            new[] { "6 ay", "1 yıl", "2 yıl", "5 yıl" }, 1),
-
-        ("İş hijyeni ölçümlerinde \"TWA\" (Time Weighted Average) ifadesi neyi temsil eder?",
-            new[] { "Anlık en yüksek maruziyet değerini", "8 saatlik vardiya için zaman ağırlıklı ortalama maruziyet değerini", "15 dakikalık kısa süreli maruziyet değerini", "Haftalık toplam çalışma süresini" }, 1),
-
-        ("Patlayıcı ortamların oluşmasını önlemek ve ATEX standartlarına uymak için hazırlanan dokümana ne ad verilir?",
-            new[] { "Patlamadan Korunma Dokümanı (PKD)", "Yangın Tahliye Planı", "Acil Durum Eylem Planı", "Malzeme Güvenlik Bilgi Formu (MSDS)" }, 0),
+        ("İnsanda ağır hastalıklara yol açan, topluma yayılma riski yüksek ancak etkili korunma ve tedavisi BULUNMAYAN biyolojik etkenler hangi gruptadır?",
+            new[] { "Grup 1", "Grup 2", "Grup 3", "Grup 4" }, 3),
     };
 
     private sealed class PoolFile

@@ -1,7 +1,7 @@
 import { Component, ChangeDetectorRef, DestroyRef, inject, NgZone, signal, computed, OnInit, ElementRef, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DecimalPipe, DatePipe, SlicePipe, UpperCasePipe } from '@angular/common';
+import { DecimalPipe, SlicePipe, UpperCasePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -23,7 +23,6 @@ import html2canvas from 'html2canvas';
     LogoComponent,
     SpinnerComponent,
     DecimalPipe,
-    DatePipe,
     SlicePipe,
     UpperCasePipe,
   ],
@@ -69,6 +68,12 @@ export class SinavPortalComponent implements OnInit {
   });
 
   readonly certTemplate = viewChild<ElementRef<HTMLElement>>('certTemplate');
+
+  readonly formattedDate = computed(() => {
+    const result = this.examResult();
+    const d = result?.finishedAt ? new Date(result.finishedAt) : new Date();
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  });
 
   ngOnInit(): void {
     sessionStorage.removeItem('sinav_student');

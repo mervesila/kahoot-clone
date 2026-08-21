@@ -124,7 +124,7 @@
           <div class="cert-title">BAŞARI SERTİFİKASI</div>
           <div class="cert-divider"></div>
           <p class="cert-body">
-            İş Sağlığı ve Güvenliği Seviye 2 Sınavı'nı başarıyla tamamlayarak<br>
+            İş Sağlığı ve Güvenliği Seviye 1 ve Seviye 2 Sınavlarını başarıyla tamamlayarak<br>
             bu belgeyi almaya hak kazanmıştır:
           </p>
           <div class="cert-name">{{ studentName() }}</div>
@@ -139,7 +139,7 @@
             </div>
             <div class="cert-detail-item">
               <span class="cert-detail-label">Tamamlanma Tarihi</span>
-              <span class="cert-detail-value">{{ (examResult()!.finishedAt || '') | date:'longDate':'':'tr' }}</span>
+              <span class="cert-detail-value">{{ formattedDate() }}</span>
             </div>
           </div>
           <div class="cert-badge">

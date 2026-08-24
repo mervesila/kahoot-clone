@@ -115,7 +115,7 @@ export class SinavPortalComponent implements OnInit {
       this.startTimer();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Katılabileceğiniz aktif bir sınav bulunmamaktadır.';
-      if (err instanceof ApiError && (err.code === 'LEVEL1_FAILED' || err.code === 'LEVEL2_FAILED' || err.code === 'LEVEL2_COMPLETED')) {
+      if (err instanceof ApiError && (err.code === 'LEVEL1_FAILED' || err.code === 'LEVEL2_FAILED')) {
         sessionStorage.setItem('sinav_blocked', SinavPortalComponent.BLOCKED_MSG);
         this.blockedMessage.set(SinavPortalComponent.BLOCKED_MSG);
         this.step.set('blocked');
@@ -191,14 +191,17 @@ export class SinavPortalComponent implements OnInit {
       }, 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Cevap gönderilemedi.';
-      if (err instanceof ApiError && err.code === 'EXAM_DEACTIVATED') {
+      if (err instanceof ApiError && (err.code === 'EXAM_DEACTIVATED' || err.code === 'ATTEMPT_BLOCKED')) {
         this.stopTimer();
-        this.entryError.set(msg);
-        this.step.set('error');
-      } else {
-        this.entryError.set(msg);
-        this.step.set('error');
+        if (err.code === 'ATTEMPT_BLOCKED') {
+          sessionStorage.setItem('sinav_blocked', SinavPortalComponent.BLOCKED_MSG);
+          this.blockedMessage.set(SinavPortalComponent.BLOCKED_MSG);
+          this.step.set('blocked');
+          return;
+        }
       }
+      this.entryError.set(msg);
+      this.step.set('error');
     }
   }
 
@@ -215,8 +218,14 @@ export class SinavPortalComponent implements OnInit {
       this.startTimer();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Soru yüklenemedi.';
-      if (err instanceof ApiError && err.code === 'EXAM_DEACTIVATED') {
+      if (err instanceof ApiError && (err.code === 'EXAM_DEACTIVATED' || err.code === 'ATTEMPT_BLOCKED')) {
         this.stopTimer();
+        if (err.code === 'ATTEMPT_BLOCKED') {
+          sessionStorage.setItem('sinav_blocked', SinavPortalComponent.BLOCKED_MSG);
+          this.blockedMessage.set(SinavPortalComponent.BLOCKED_MSG);
+          this.step.set('blocked');
+          return;
+        }
       }
       this.entryError.set(msg);
       this.step.set('error');

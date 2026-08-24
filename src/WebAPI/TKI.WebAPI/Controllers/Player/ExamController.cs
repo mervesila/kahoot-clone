@@ -87,8 +87,6 @@ public class ExamController : PlayerBaseController
             .Any(a => a.QuizId == level1Quiz?.Id && a.IsPassed);
         bool hasFailedLevel1 = level1Quiz != null &&
             previousAttempts.Any(a => a.QuizId == level1Quiz.Id && a.Status == "Finished" && !a.IsPassed);
-        bool hasAttemptedLevel2 = level2Quiz != null &&
-            previousAttempts.Any(a => a.QuizId == level2Quiz.Id);
         bool hasFailedLevel2 = level2Quiz != null &&
             previousAttempts.Any(a => a.QuizId == level2Quiz.Id && a.Status == "Finished" && !a.IsPassed);
 
@@ -100,9 +98,6 @@ public class ExamController : PlayerBaseController
 
         if (hasFailedLevel2)
             return BadRequest(new { code = "LEVEL2_FAILED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
-
-        if (hasAttemptedLevel2)
-            return BadRequest(new { code = "LEVEL2_COMPLETED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
 
         if (hasInProgressAttempt)
         {

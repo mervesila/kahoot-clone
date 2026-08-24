@@ -329,7 +329,6 @@ export interface LeaderboardEntryDto {
   maxPossibleScore: number;
   percentage: number;
   isPassed: boolean;
-  attemptCount: number;
   bestAttemptId: string;
 }
 

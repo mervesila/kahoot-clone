@@ -59,13 +59,12 @@ export class ExamReportComponent implements OnInit {
       'Puan': entry.totalScore + ' / ' + entry.maxPossibleScore,
       'Yuzde': '%' + entry.percentage.toFixed(1),
       'Durum': entry.isPassed ? 'GECTI' : 'KALDI',
-      'Deneme Sayisi': entry.attemptCount,
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
       { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 12 },
-      { wch: 8 }, { wch: 8 }, { wch: 12 },
+      { wch: 8 }, { wch: 8 },
     ];
 
     const wb = XLSX.utils.book_new();

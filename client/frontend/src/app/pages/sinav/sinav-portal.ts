@@ -115,7 +115,7 @@ export class SinavPortalComponent implements OnInit {
       this.startTimer();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Katılabileceğiniz aktif bir sınav bulunmamaktadır.';
-      if (err instanceof ApiError && (err.code === 'LEVEL1_FAILED' || err.code === 'LEVEL2_FAILED')) {
+      if (err instanceof ApiError && (err.code === 'LEVEL1_FAILED' || err.code === 'LEVEL2_ATTEMPTED')) {
         sessionStorage.setItem('sinav_blocked', SinavPortalComponent.BLOCKED_MSG);
         this.blockedMessage.set(SinavPortalComponent.BLOCKED_MSG);
         this.step.set('blocked');

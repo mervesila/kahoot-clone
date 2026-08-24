@@ -76,6 +76,8 @@ export class SinavPortalComponent implements OnInit {
     return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   });
 
+  private static readonly BLOCKED_MSG = 'Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız.';
+
   ngOnInit(): void {
     const blocked = sessionStorage.getItem('sinav_blocked');
     if (blocked) {
@@ -114,8 +116,8 @@ export class SinavPortalComponent implements OnInit {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Katılabileceğiniz aktif bir sınav bulunmamaktadır.';
       if (err instanceof ApiError && (err.code === 'LEVEL1_FAILED' || err.code === 'LEVEL2_FAILED' || err.code === 'LEVEL2_COMPLETED')) {
-        sessionStorage.setItem('sinav_blocked', msg);
-        this.blockedMessage.set(msg);
+        sessionStorage.setItem('sinav_blocked', SinavPortalComponent.BLOCKED_MSG);
+        this.blockedMessage.set(SinavPortalComponent.BLOCKED_MSG);
         this.step.set('blocked');
       } else {
         this.entryError.set(msg);
@@ -229,6 +231,16 @@ export class SinavPortalComponent implements OnInit {
         throw new Error('Sonuç alınamadı.');
       }
       this.examResult.set(result);
+
+      if (!result.isPassed) {
+        sessionStorage.setItem('sinav_blocked', SinavPortalComponent.BLOCKED_MSG);
+        sessionStorage.removeItem('sinav_student');
+        sessionStorage.removeItem('sinav_attempt');
+        this.blockedMessage.set(SinavPortalComponent.BLOCKED_MSG);
+        this.step.set('blocked');
+        return;
+      }
+
       this.step.set('result');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sonuç yüklenemedi.';
@@ -238,6 +250,7 @@ export class SinavPortalComponent implements OnInit {
   }
 
   retryEntry(): void {
+    if (sessionStorage.getItem('sinav_blocked')) return;
     this.stopTimer();
     this.entryError.set('');
     this.step.set('entry');

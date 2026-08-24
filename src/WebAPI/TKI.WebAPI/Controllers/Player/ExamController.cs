@@ -23,6 +23,18 @@ public class ExamController : PlayerBaseController
         if (quiz == null) return NotFound("Sınav bulunamadı.");
         if (!quiz.IsActive) return BadRequest("Bu sınavın süresi dolmuş veya erişime kapatılmıştır.");
 
+        var previousAttempts = await _db.ExamAttempts
+            .Where(a => a.StudentName == request.StudentName && a.QuizId == request.QuizId)
+            .ToListAsync();
+
+        bool hasFailed = previousAttempts.Any(a => a.Status == "Finished" && !a.IsPassed);
+        if (hasFailed)
+            return BadRequest(new { code = "LEVEL_FAILED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
+
+        bool hasPassed = previousAttempts.Any(a => a.IsPassed);
+        if (hasPassed)
+            return BadRequest(new { code = "LEVEL_COMPLETED", message = "Bu sınavı zaten tamamladınız." });
+
         var levelQuestions = quiz.Questions.Where(q => q.Level == quiz.Level).ToList();
         if (!levelQuestions.Any()) return BadRequest("Bu seviyede uygun soru bulunmuyor.");
 
@@ -83,6 +95,15 @@ public class ExamController : PlayerBaseController
         bool hasInProgressAttempt = previousAttempts
             .Any(a => a.Status == "InProgress");
 
+        if (hasFailedLevel1)
+            return BadRequest(new { code = "LEVEL1_FAILED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
+
+        if (hasFailedLevel2)
+            return BadRequest(new { code = "LEVEL2_FAILED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
+
+        if (hasAttemptedLevel2)
+            return BadRequest(new { code = "LEVEL2_COMPLETED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
+
         if (hasInProgressAttempt)
         {
             var inProgress = previousAttempts.First(a => a.Status == "InProgress");
@@ -107,15 +128,6 @@ public class ExamController : PlayerBaseController
                 Question = MapQuestion(question, inProgress.CurrentQuestionIndex, questions.Count)
             });
         }
-
-        if (hasFailedLevel1)
-            return BadRequest(new { code = "LEVEL1_FAILED", message = "Daha önce İSG Seviye 1 sınavında başarısız olduğunuz için tekrar sınava giremezsiniz." });
-
-        if (hasFailedLevel2)
-            return BadRequest(new { code = "LEVEL2_FAILED", message = "Daha önce İSG Seviye 2 sınavında başarısız olduğunuz için tekrar sınava giremezsiniz." });
-
-        if (hasAttemptedLevel2)
-            return BadRequest(new { code = "LEVEL2_COMPLETED", message = "Seviye 2 sınavını zaten tamamladınız." });
 
         if (!hasPassedLevel1)
         {
@@ -176,6 +188,14 @@ public class ExamController : PlayerBaseController
         if (attempt.Status == "Finished") return BadRequest("Sınav zaten tamamlandı.");
         if (!attempt.Quiz.IsActive)
             return BadRequest(new { code = "EXAM_DEACTIVATED", message = "Bu sınav şu anda yönetici tarafından durdurulmuştur." });
+
+        var hasFailedOtherAttempt = await _db.ExamAttempts.AnyAsync(a =>
+            a.Id != attempt.Id &&
+            a.StudentName == attempt.StudentName &&
+            a.QuizId == attempt.QuizId &&
+            a.Status == "Finished" && !a.IsPassed);
+        if (hasFailedOtherAttempt)
+            return StatusCode(403, new { code = "ATTEMPT_BLOCKED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
 
         var questions = GetQuestionsInOrder(attempt.Quiz, attempt.SelectedQuestionIds);
         if (request.QuestionIndex < 0 || request.QuestionIndex >= questions.Count)
@@ -260,6 +280,14 @@ public class ExamController : PlayerBaseController
         if (attempt.Status == "Finished") return BadRequest("Sınav tamamlandı.");
         if (!attempt.Quiz.IsActive)
             return BadRequest(new { code = "EXAM_DEACTIVATED", message = "Bu sınav şu anda yönetici tarafından durdurulmuştur." });
+
+        var hasFailedOtherAttempt = await _db.ExamAttempts.AnyAsync(a =>
+            a.Id != attempt.Id &&
+            a.StudentName == attempt.StudentName &&
+            a.QuizId == attempt.QuizId &&
+            a.Status == "Finished" && !a.IsPassed);
+        if (hasFailedOtherAttempt)
+            return StatusCode(403, new { code = "ATTEMPT_BLOCKED", message = "Bu sınava ait hakkınız dolmuştur. Sınavdan kaldığınız için tekrar katılım sağlayamazsınız." });
 
         var questions = GetQuestionsInOrder(attempt.Quiz, attempt.SelectedQuestionIds);
         if (index < 0 || index >= questions.Count) return BadRequest("Geçersiz soru indeksi.");

@@ -73,6 +73,12 @@ public class ExamController : PlayerBaseController
 
         bool hasPassedLevel1 = previousAttempts
             .Any(a => a.QuizId == level1Quiz?.Id && a.IsPassed);
+        bool hasFailedLevel1 = level1Quiz != null &&
+            previousAttempts.Any(a => a.QuizId == level1Quiz.Id && a.Status == "Finished" && !a.IsPassed);
+        bool hasAttemptedLevel2 = level2Quiz != null &&
+            previousAttempts.Any(a => a.QuizId == level2Quiz.Id);
+        bool hasFailedLevel2 = level2Quiz != null &&
+            previousAttempts.Any(a => a.QuizId == level2Quiz.Id && a.Status == "Finished" && !a.IsPassed);
 
         bool hasInProgressAttempt = previousAttempts
             .Any(a => a.Status == "InProgress");
@@ -101,6 +107,15 @@ public class ExamController : PlayerBaseController
                 Question = MapQuestion(question, inProgress.CurrentQuestionIndex, questions.Count)
             });
         }
+
+        if (hasFailedLevel1)
+            return BadRequest(new { code = "LEVEL1_FAILED", message = "Daha önce İSG Seviye 1 sınavında başarısız olduğunuz için tekrar sınava giremezsiniz." });
+
+        if (hasFailedLevel2)
+            return BadRequest(new { code = "LEVEL2_FAILED", message = "Daha önce İSG Seviye 2 sınavında başarısız olduğunuz için tekrar sınava giremezsiniz." });
+
+        if (hasAttemptedLevel2)
+            return BadRequest(new { code = "LEVEL2_COMPLETED", message = "Seviye 2 sınavını zaten tamamladınız." });
 
         if (!hasPassedLevel1)
         {

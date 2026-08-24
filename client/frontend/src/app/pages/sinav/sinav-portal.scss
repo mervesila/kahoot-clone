@@ -441,3 +441,47 @@
   letter-spacing: 2px;
   text-transform: uppercase;
 }
+
+/* ── Blocked Screen ── */
+.blocked-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  padding: 2rem;
+}
+
+.blocked-card {
+  background: #fff;
+  border: 2px solid #fecaca;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.1);
+}
+
+.blocked-icon {
+  margin-bottom: 1rem;
+}
+
+.blocked-card h2 {
+  font-size: 1.3rem;
+  color: #dc2626;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.blocked-message {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.blocked-hint {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-style: italic;
+}

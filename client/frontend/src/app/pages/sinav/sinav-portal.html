@@ -20,6 +20,23 @@
         </button>
       </div>
     </div>
+  } @else if (step() === 'blocked') {
+    <div class="blocked-screen">
+      <div class="blocked-card">
+        <div class="blocked-icon">
+          <svg viewBox="0 0 64 64" width="64" height="64">
+            <circle cx="32" cy="32" r="30" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+            <rect x="20" y="14" width="24" height="32" rx="3" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+            <rect x="26" y="8" width="12" height="10" rx="6" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+            <line x1="28" y1="28" x2="28" y2="36" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="28" cy="40" r="1.5" fill="#dc2626"/>
+          </svg>
+        </div>
+        <h2>Sınav Giriş Hakkınız Dolmuştur</h2>
+        <p class="blocked-message">{{ blockedMessage() }}</p>
+        <p class="blocked-hint">Lütfen eğitim yöneticinizle iletişime geçiniz.</p>
+      </div>
+    </div>
   } @else if (step() === 'loading') {
     <app-spinner />
     <p class="loading-text">Yükleniyor...</p>

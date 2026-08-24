@@ -37,9 +37,10 @@ export class SinavPortalComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly step = signal<'entry' | 'loading' | 'error' | 'exam' | 'result'>('entry');
+  readonly step = signal<'entry' | 'loading' | 'error' | 'exam' | 'result' | 'blocked'>('entry');
   readonly studentName = signal('');
   readonly entryError = signal('');
+  readonly blockedMessage = signal('');
 
   readonly currentQuestion = signal<ExamQuestionDto | null>(null);
   readonly selectedIndex = signal<string | null>(null);
@@ -76,6 +77,11 @@ export class SinavPortalComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    const blocked = sessionStorage.getItem('sinav_blocked');
+    if (blocked) {
+      this.blockedMessage.set(blocked);
+      this.step.set('blocked');
+    }
     sessionStorage.removeItem('sinav_student');
     sessionStorage.removeItem('sinav_attempt');
   }
@@ -107,8 +113,14 @@ export class SinavPortalComponent implements OnInit {
       this.startTimer();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Katılabileceğiniz aktif bir sınav bulunmamaktadır.';
-      this.entryError.set(msg);
-      this.step.set('entry');
+      if (err instanceof ApiError && (err.code === 'LEVEL1_FAILED' || err.code === 'LEVEL2_FAILED' || err.code === 'LEVEL2_COMPLETED')) {
+        sessionStorage.setItem('sinav_blocked', msg);
+        this.blockedMessage.set(msg);
+        this.step.set('blocked');
+      } else {
+        this.entryError.set(msg);
+        this.step.set('entry');
+      }
     }
   }
 
